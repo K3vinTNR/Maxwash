@@ -1,0 +1,31 @@
+# Perbandingan visual dengan proposal
+
+Acuan: screenshot di MAXWASH LAUNDRY.pdf, halaman 5–14. Tidak tersedia URL file Figma, token desain, font asli, atau aset terpisah. Nilai ukuran/warna diimplementasikan dari estimasi screenshot.
+
+Status: delapan layar telah dirender di emulator dan diperiksa secara visual pada 10 Oktober 2026. Screenshot ada di `output/screenshots/`; tujuh pasangan acuan/hasil ada di `output/comparison/`. Register dibandingkan dengan bahasa visual Login karena tidak memiliki screenshot khusus. Pemeriksaan ini manual, bukan pengukuran pixel-diff atau klaim pixel-perfect.
+
+| Layar | Screenshot acuan | Elemen yang dipertahankan di kode | Selisih yang harus dilaporkan |
+| --- | --- | --- | --- |
+| My Orders/Pesanan & Riwayat | Proposal hlm. 12, History | Header MAXWASH, search, chips, ringkasan aktivitas, kartu ID/layanan/biaya, tombol teal, bottom bar 4 menu | Dataset enam ID PRD, outlet ditambahkan, jumlah/statistik mengikuti dataset, tidak ada pembuatan pesanan ulang |
+| Order Details | Hlm. 10, Order Tracking | Kartu ID/layanan/outlet, panel progres teal, mint progress bar, timeline vertikal, tombol kontak, bottom bar | 6 tahapan PRD menggantikan 5 tahapan proposal; label status/angka disesuaikan, data simulasi menggantikan klaim live, tombol kontak memberi feedback demo |
+| Register | Tidak ada screenshot khusus; gaya Login hlm. 5 | Logo, judul di tengah, latar terang, kartu putih, input biru muda, tombol teal | Lima field dan tinggi layout baru untuk PRD; tidak dapat dinyatakan cocok pixel dengan screenshot Register yang tidak tersedia |
+| Laundry Location | Hlm. 7, Pickup | Peta pada bagian atas, marker outlet/titik Anda, garis rute, refresh, pilihan, kartu alamat/outlet, tombol utama | Peta Compose ilustratif bukan Google Maps raster; kurir/jadwal/gratis ongkir diganti informasi lokasi demo; Direction dialog; tidak ada badge akurasi GPS nyata |
+| Profile & QR | Hlm. 13, Profile | Avatar lingkaran, nama/telepon/member, kartu data, dropdown parfum/catatan/toggle, outlet, simpan, logout, bottom bar | Avatar inisial menggantikan foto yang aset aslinya tidak tersedia; email/QR/Customer ID ditambahkan; kartu QR menggeser bagian bawah dan perlu scroll; badge kamera/verifikasi WhatsApp tidak disalin karena tidak ada integrasi tersebut |
+| Login | Hlm. 5 | Logo, judul/subjudul, kartu input putih, latar terang, teal CTA, daftar akun | Simulasi email/nomor dan password PRD menggantikan OTP/WhatsApp/SMS/Google/Apple; tombol demo tambahan |
+| Home | Hlm. 6 | Greeting, ringkasan order, CTA, grid 4 menu, statistik 3 kolom, promo teal, aktivitas, bottom bar | Nama dan angka konsisten dengan dataset; menu Pesanan/Lokasi menggantikan Pesan Cuci/Kasir; promo feedback demo; latest notification lokal |
+| Notifications | Hlm. 14 | Header, title, count unread, chips, kartu/icon, read dot, bottom bar | Filter belum dibaca menggantikan promo/reward; lima notifikasi status nyata dalam dataset lokal; waktu dummy eksplisit |
+
+## Temuan dari hasil render
+
+- My Orders: search, tiga filter, ringkasan, kartu putih dan CTA teal berada dalam urutan yang sama. Teks layanan/biaya lebih kecil dan kartu lebih renggang daripada acuan; outlet/tanggal yang lebih panjang menambah tinggi. Aksi kartu diseragamkan menjadi detail/nota demo; tidak menyalin Pesan Lagi. Riwayat menggunakan struktur daftar yang sama dengan judul/tab aktif berbeda.
+- Order Details: hierarki ID, ringkasan layanan, panel teal dan timeline dipertahankan. Judul/progres lebih kecil daripada screenshot; panel tidak memiliki ilustrasi dekoratif transparan. Enam tahap memerlukan scroll. Label aktif/selesai mengikuti status pesanan yang dibuka. Screenshot `order-timeline.png` memperlihatkan bagian bawah timeline dan tombol kontak.
+- Register: lima field, validasi inline dan tombol nonaktif tampil tanpa overlap pada viewport yang diuji. Card lebih persegi daripada card auth proposal. Tidak ada acuan Register untuk memverifikasi posisi/tinggi field secara langsung.
+- Laundry Location: marker, rute putus-putus, kontrol refresh, pilihan kapsul dan kartu informasi tampak jelas. Peta ilustratif memiliki detail jauh lebih sedikit daripada raster Google Maps pada proposal. Layout bawah berbeda karena fitur pickup/jadwal/driver diganti lokasi outlet sesuai PRD. Tombol Direction berada di bagian bawah yang dapat discroll.
+- Profile & QR: urutan avatar, identitas dan data diri dipertahankan. Avatar, QR dan baris email merupakan perbedaan paling terlihat. Preferensi/outlet/save/logout dapat discroll. Pilihan parfum dikembalikan ke dropdown setelah perbandingan awal agar mengikuti bentuk input proposal. QR dialog memperlihatkan nama/ID, tombol tutup dan penjelasan visual demo; pola QR tidak mengodekan token yang dapat dipindai.
+- Login: logo, judul/subjudul, latar terang, card input dan CTA dipertahankan. Ukuran judul lebih kecil, radius card/CTA berbeda; isi login password dan tombol demo merupakan adaptasi PRD yang sudah dilaporkan.
+- Home: greeting, kartu order, grid menu, statistik dan promo mengikuti urutan acuan. Kartu order tidak memakai stripe vertikal teal pada tepi kiri; spacing grid lebih besar. Aktivitas terakhir berada di bawah viewport dan dapat discroll.
+- Notifications: kartu, ikon warna, unread dot dan bottom bar dipertahankan. Judul/mark-all berada pada dua baris; isi kartu lebih ringkas. Filter/konten promo dan reward diganti status laundry lokal.
+
+Selisih umum: font sans-serif sistem dan ikon Material outlined adalah pendekatan visual; bobot huruf, outline ikon, shadow, radius, dan spacing belum identik dengan Figma. Screenshot aplikasi pada viewport 840×1860 px, density 320, memiliki area aman atas sekitar 80 dp karena cutout AVD Pixel 10 Pro XL. Screenshot proposal tidak menampilkan inset sistem tersebut dan sebagian merupakan halaman sangat panjang. Perbedaan tinggi/crop tidak boleh dianggap hilangnya konten: list/detail/profile/location menggunakan scroll, sedangkan bottom bar tetap terlihat.
+
+Warna teal, navy, lavender, mint dan latar terang sudah konsisten pada hasil render. Belum ada aset foto/font/ikon asli atau URL Figma untuk menghilangkan selisih di atas. Aplikasi mengikuti struktur utama mockup, tetapi kesesuaian visual belum identik.

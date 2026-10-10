@@ -2,10 +2,15 @@ package org.umn.maxwash.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
-
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// Estimated from the proposal screenshots, independent of device wallpaper.
+val WashTeal = Color(0xFF056B93)
+val WashBlue = Color(0xFF007FAB)
+val WashNavy = Color(0xFF142635)
+val WashBackground = Color(0xFFF8F9FF)
+val WashSoftBlue = Color(0xFFF0F4FF)
+val WashLavender = Color(0xFFE4E9FC)
+val WashMint = Color(0xFF6AF4C0)
+val WashGreen = Color(0xFF10785E)
+val WashMuted = Color(0xFF66717A)
+val WashBorder = Color(0xFFE9EDF4)
+val WashError = Color(0xFFB32632)

@@ -11,21 +11,42 @@ enum class LaundryStatus(val label: String, val description: String) {
 
 data class Customer(
     val id: String, val name: String, val phone: String, val email: String,
-    val address: String, val fragrance: String = "Lavender Fresh",
-    val notes: String = "Deterjen hypoallergenic, pisahkan baju putih",
-    val notificationEnabled: Boolean = true, val outletId: String = "OUT-001"
+    val address: String = "", val fragrance: String = "",
+    val notes: String = "",
+    val notificationEnabled: Boolean = true, val outletId: String = "",
+    val membership: String = "Member", val points: Int = 0
 )
 data class Outlet(val id: String, val name: String, val address: String, val distanceKm: Double,
-    val openingHours: String = "08:00–21:00")
+    val openingHours: String)
 data class StatusEvent(val status: LaundryStatus, val time: String)
 data class LaundryOrder(
     val id: String, val service: String, val weightKg: Double, val date: String,
     val outletId: String, val status: LaundryStatus, val total: Int,
-    val estimatedCollection: String, val history: List<StatusEvent>
+    val estimatedCollection: String, val history: List<StatusEvent>,
+    val createdAt: Long, val turnaroundHours: Int
 ) {
     val isCompleted get() = status == LaundryStatus.COLLECTED
     val progress get() = (status.ordinal + 1) / LaundryStatus.entries.size.toFloat()
 }
 data class LaundryNotification(val id: String, val orderId: String, val title: String,
-    val message: String, val time: String, val initiallyRead: Boolean = false)
+    val message: String, val time: String, val isRead: Boolean, val createdAt: Long)
+
+data class LaundryService(val id: String, val name: String, val pricePerKg: Int, val turnaroundHours: Int)
+data class Promotion(val id: String, val title: String, val message: String)
+
+data class LocalData(
+    val customer: Customer? = null,
+    val orders: List<LaundryOrder> = emptyList(),
+    val notifications: List<LaundryNotification> = emptyList(),
+    val outlets: List<Outlet> = emptyList(),
+    val services: List<LaundryService> = emptyList(),
+    val fragrances: List<String> = emptyList(),
+    val promotions: List<Promotion> = emptyList(),
+    val selectedOutletId: String = ""
+)
+
+fun List<LaundryOrder>.filterOrders(filter: OrderFilter, query: String) = filter { order ->
+    (filter == OrderFilter.ALL || (filter == OrderFilter.COMPLETED) == order.isCompleted) &&
+        (query.isBlank() || order.id.contains(query.trim(), true) || order.service.contains(query.trim(), true))
+}
 enum class OrderFilter(val label: String) { ALL("Semua"), ACTIVE("Sedang Berjalan"), COMPLETED("Selesai") }

@@ -24,7 +24,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import org.umn.maxwash.data.MockRepository
 import org.umn.maxwash.ui.MaxwashViewModel
 import org.umn.maxwash.ui.components.*
 import org.umn.maxwash.ui.theme.*
@@ -33,13 +32,15 @@ import java.util.Locale
 @Composable
 fun LocationScreen(vm: MaxwashViewModel, feedback: (String) -> Unit) {
     var directionDialog by rememberSaveable { mutableStateOf(false) }
-    val outlet = MockRepository.outlet(vm.selectedOutletId)
-    val distance = String.format(Locale.US, "%.1f km", vm.distanceKm())
+    val customer = vm.customer ?: return
+    val outlet = vm.outlet(vm.selectedOutletId) ?: vm.outlets.firstOrNull()
+    if (outlet == null) { EmptyState("Belum ada outlet", "Data outlet belum tersedia."); return }
+    val distance = String.format(Locale.US, "%.1f km", outlet.distanceKm)
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        LocalMap(vm.selectedOutletId == "OUT-002", vm.locationVersion) { vm.refreshLocation(); feedback("Lokasi simulasi diperbarui") }
+        LocalMap(outlet.name) { vm.refreshLocation(); feedback("Data outlet lokal dimuat ulang") }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MockRepository.outlets.forEach { item -> FilterChip(item.id == vm.selectedOutletId, { vm.selectedOutletId = item.id },
-                label = { Text(if (item.id == "OUT-001") "Bintaro Sektor 7" else "Senopati", style = MaterialTheme.typography.labelMedium) },
+            vm.outlets.forEach { item -> FilterChip(item.id == outlet.id, { vm.selectOutlet(item.id) },
+                label = { Text(item.name.removePrefix("MAXWASH "), style = MaterialTheme.typography.labelMedium) },
                 shape = CircleShape, modifier = Modifier.testTag("outlet_${item.id}")) }
         }
         Row(Modifier.fillMaxWidth().background(Color(0xFFBBF8DF), MaterialTheme.shapes.extraLarge).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -49,9 +50,9 @@ fun LocationScreen(vm: MaxwashViewModel, feedback: (String) -> Unit) {
         WashCard {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Pill("⌂ Titik Anda (simulasi)")
-                TextButton({ vm.refreshLocation(); feedback("Titik pelanggan pada peta simulasi diperbarui") }) { Text("Perbarui") }
+                TextButton({ vm.refreshLocation(); feedback("Data outlet lokal dimuat ulang") }) { Text("Perbarui") }
             }
-            Text(vm.customer.address, style = MaterialTheme.typography.titleMedium)
+            Text(customer.address.ifBlank { "Lengkapi alamat melalui Profil" }, style = MaterialTheme.typography.titleMedium)
             Text("Posisi ini menggunakan data lokal. Tidak mengakses GPS perangkat.", style = MaterialTheme.typography.bodySmall, color = WashMuted)
         }
         WashCard {
@@ -74,11 +75,11 @@ fun LocationScreen(vm: MaxwashViewModel, feedback: (String) -> Unit) {
 }
 
 @Composable
-private fun LocalMap(senopati: Boolean, version: Int, onRefresh: () -> Unit) {
+private fun LocalMap(outletName: String, onRefresh: () -> Unit) {
     BoxWithConstraints(Modifier.fillMaxWidth().height(300.dp).clip(MaterialTheme.shapes.extraLarge).background(Color(0xFFECF1EF))
         .semantics { contentDescription = "Peta simulasi dengan marker outlet dan lokasi pelanggan" }) {
-        val customerX = maxWidth * (0.28f + version * 0.03f)
-        val outletX = maxWidth * if (senopati) 0.68f else 0.60f
+        val customerX = maxWidth * 0.28f
+        val outletX = maxWidth * 0.60f
         Canvas(Modifier.fillMaxSize()) {
             val w = size.width; val h = size.height
             drawRect(Color(0xFFD5E9DA), Offset(w * .06f, h * .28f), Size(w * .22f, h * .22f))
@@ -95,12 +96,12 @@ private fun LocalMap(senopati: Boolean, version: Int, onRefresh: () -> Unit) {
             }
             val river = Path().apply { moveTo(w * .1f, h); cubicTo(w * .9f, h * .9f, w * .3f, h * .35f, w * .95f, 0f) }
             drawPath(river, Color(0xFFBCDDEC), style = Stroke(9.dp.toPx()))
-            drawLine(WashTeal, Offset(w * (.28f + version * .03f) + 16.dp.toPx(), h * .66f + 16.dp.toPx()),
-                Offset(w * (if (senopati) .68f else .60f) + 16.dp.toPx(), h * .3f + 16.dp.toPx()),
+            drawLine(WashTeal, Offset(w * .28f + 16.dp.toPx(), h * .66f + 16.dp.toPx()),
+                Offset(w * .60f + 16.dp.toPx(), h * .3f + 16.dp.toPx()),
                 3.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f)))
         }
         Box(Modifier.align(Alignment.TopCenter).padding(12.dp)) { Pill("• LOKASI SIMULASI", WashGreen, Color.White) }
-        Text(if (senopati) "JAKARTA SELATAN" else "BINTARO", Modifier.align(Alignment.Center).offset(y = 30.dp), color = WashMuted, style = MaterialTheme.typography.labelSmall)
+        Text(outletName, Modifier.align(Alignment.Center).offset(y = 30.dp), color = WashMuted, style = MaterialTheme.typography.labelSmall)
         Column(Modifier.offset(x = outletX, y = 90.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Box(Modifier.size(34.dp).background(WashGreen, CircleShape), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.LocalLaundryService, null, Modifier.size(22.dp), tint = Color.White) }
             Pill("MAXWASH", WashGreen, Color.White)
@@ -111,7 +112,7 @@ private fun LocalMap(senopati: Boolean, version: Int, onRefresh: () -> Unit) {
         }
         FilledIconButton(onRefresh, Modifier.align(Alignment.BottomEnd).padding(12.dp).testTag("refresh_location"),
             colors = IconButtonDefaults.filledIconButtonColors(containerColor = Color.White, contentColor = WashTeal)) {
-            Icon(Icons.Outlined.MyLocation, "Perbarui lokasi simulasi")
+            Icon(Icons.Outlined.MyLocation, "Muat ulang data outlet")
         }
     }
 }

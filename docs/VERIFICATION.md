@@ -1,5 +1,7 @@
 # Verifikasi MAXWASH
 
+Laporan ini adalah hasil prototipe sebelum migrasi Room. Untuk perilaku penyimpanan dan hasil tes versi saat ini, lihat [ROOM_STORAGE.md](ROOM_STORAGE.md). Klaim reset mock setelah restart di laporan historis ini sudah tidak berlaku pada aplikasi Room.
+
 Pengujian nyata pada 10 Oktober 2026, Windows, Android Studio JBR 25, Gradle 9.5, SDK 37. Hasil di bawah membedakan build, unit test, dan pengujian aplikasi di emulator.
 
 ## Build dan analisis statis

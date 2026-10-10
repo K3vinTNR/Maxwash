@@ -7,16 +7,29 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.junit.rules.ExternalResource
+import org.junit.rules.RuleChain
+import org.junit.rules.TestRule
 import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class MaxwashFlowTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    val compose = createAndroidComposeRule<MainActivity>()
+    @get:Rule val rules: TestRule = RuleChain.outerRule(object : ExternalResource() {
+        override fun before() {
+            val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as TestMaxwashApplication
+            app.database.clearAllTables()
+            runBlocking { app.repository.initialize() }
+        }
+    }).around(compose)
     private fun awaitLogin() = compose.waitUntil(10_000) { compose.onAllNodesWithTag("demo_login").fetchSemanticsNodes().isNotEmpty() }
-    private fun demo() { awaitLogin(); compose.onNodeWithTag("demo_login").performClick(); compose.onNodeWithTag("home_greeting").assertIsDisplayed() }
+    private fun demo() { awaitLogin(); compose.onNodeWithTag("demo_login").performClick(); awaitTag("home_greeting"); compose.onNodeWithTag("home_greeting").assertIsDisplayed() }
+    private fun awaitTag(tag: String) = compose.waitUntil(10_000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
+    private fun awaitText(text: String) = compose.waitUntil(10_000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
     private fun capture(name: String) {
         closeSoftKeyboard(); compose.waitForIdle()
         val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -79,10 +92,11 @@ class MaxwashFlowTest {
     @Test fun locationSelectionRefreshAndDirectionAreLocal() {
         demo(); compose.onNodeWithText("Lokasi", useUnmergedTree = true).performScrollTo().performClick(); capture("laundry-location")
         compose.onNodeWithTag("outlet_OUT-002").performScrollTo().performClick()
+        awaitText("MAXWASH Senopati")
         compose.onNodeWithTag("location_outlet").assertTextEquals("MAXWASH Senopati")
         compose.onNodeWithTag("refresh_location").performScrollTo().performClick()
-        compose.onNodeWithTag("location_distance").assertTextContains("2.6 km", substring = true)
-        awaitFeedbackGone("Lokasi simulasi diperbarui")
+        compose.onNodeWithTag("location_distance").assertTextContains("2.5 km", substring = true)
+        awaitFeedbackGone("Data outlet lokal dimuat ulang")
         compose.onNodeWithTag("direction").performScrollTo().performClick()
         compose.waitUntil(10_000) { runCatching { compose.onNodeWithText("Petunjuk Arah Demo").assertIsDisplayed() }.isSuccess }
         captureNative("direction-dialog")
@@ -93,6 +107,7 @@ class MaxwashFlowTest {
         compose.onNodeWithTag("edit_profile").performClick()
         compose.onNodeWithTag("edit_name").performTextReplacement("Andi Wijaya")
         closeSoftKeyboard(); compose.onNodeWithTag("edit_save").performClick()
+        awaitText("Andi Wijaya")
         compose.onNodeWithTag("profile_name").assertTextEquals("Andi Wijaya")
         awaitFeedbackGone("Data diri diperbarui")
         compose.onNodeWithTag("profile_fragrance").performScrollTo().performClick()
@@ -111,6 +126,7 @@ class MaxwashFlowTest {
         compose.onNodeWithTag("profile_notifications").performScrollTo().assertIsOff()
         compose.onNodeWithTag("profile_fragrance").performScrollTo().assertTextContains("Ocean Breeze", substring = true)
         compose.onNodeWithTag("logout").performScrollTo().performClick()
+        awaitLogin()
         compose.onNodeWithTag("demo_login").assertExists()
         compose.onNodeWithTag("nav_home").assertDoesNotExist()
     }
@@ -119,8 +135,10 @@ class MaxwashFlowTest {
         compose.onNodeWithTag("notification_N-001").performClick()
         compose.onNodeWithTag("detail_id").assertTextEquals("#MW-1002")
         compose.onNodeWithTag("back").performClick()
+        awaitText("1 Baru")
         compose.onNodeWithText("1 Baru").assertExists()
         compose.onNodeWithTag("mark_all_read").performClick()
+        awaitText("0 Baru")
         compose.onNodeWithText("0 Baru").assertExists()
         compose.onNodeWithTag("unread_filter").performClick()
         compose.onNodeWithTag("notifications_empty").assertExists()
@@ -133,5 +151,33 @@ class MaxwashFlowTest {
         compose.onNodeWithTag("order_MW-1001").assertDoesNotExist()
         compose.onNodeWithTag("order_search").performTextInput("does-not-exist")
         compose.onNodeWithTag("orders_empty").assertExists()
+    }
+
+    @Test fun newAccountCanCreateAndReloadItsOwnLocalOrder() {
+        awaitLogin()
+        compose.onNodeWithTag("open_register").performClick()
+        input("register_name", "Sari Utami")
+        input("register_phone", "081234567892")
+        input("register_email", "sari@example.com")
+        input("register_password", "SariPass123")
+        input("register_confirm", "SariPass123")
+        closeSoftKeyboard()
+        compose.onNodeWithTag("register_submit").performScrollTo().performClick()
+        awaitTag("home_greeting")
+        compose.onNodeWithTag("home_orders_empty").assertExists()
+        compose.onNodeWithTag("nav_orders").performClick()
+        compose.onNodeWithTag("order_MW-1001").assertDoesNotExist()
+        compose.onNodeWithTag("add_order").performClick()
+        input("new_order_weight", "2.5")
+        closeSoftKeyboard()
+        compose.onNodeWithTag("new_order_save").performClick()
+        awaitTag("detail_id")
+        compose.onNodeWithTag("detail_status").assertTextEquals("Pesanan Diterima")
+        compose.activityRule.scenario.recreate()
+        compose.waitForIdle()
+        compose.onNodeWithTag("detail_status").assertTextEquals("Pesanan Diterima")
+        compose.onNodeWithTag("back").performClick()
+        compose.onNodeWithTag("order_MW-1001").assertDoesNotExist()
+        compose.onNodeWithText("Rp 17.500").assertExists()
     }
 }

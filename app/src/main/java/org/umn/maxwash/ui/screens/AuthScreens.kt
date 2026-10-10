@@ -14,8 +14,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 import org.umn.maxwash.data.FormValidation
 import org.umn.maxwash.ui.MaxwashViewModel
 import org.umn.maxwash.ui.components.*
@@ -58,19 +58,24 @@ fun LoginScreen(vm: MaxwashViewModel, onSuccess: () -> Unit, onRegister: () -> U
             if (loginError != null) Text(loginError!!, color = WashError, modifier = Modifier.testTag("login_error"), style = MaterialTheme.typography.bodySmall)
             PrimaryButton(if (busy) "Memeriksa akun…" else "Masuk Sekarang →", {
                 busy = true
-                scope.launch {
-                    delay(350)
-                    if (vm.login(identifier, password)) onSuccess() else loginError = "Email/nomor HP atau password tidak cocok."
+                scope.launch(Dispatchers.Main.immediate) {
+                    if (vm.login(identifier, password)) onSuccess() else loginError = vm.errorMessage
                     busy = false
                 }
             }, Modifier.testTag("login_submit"), identifierError == null && passwordError == null && !busy)
-            Text("Akses akun pelanggan · Demo lokal", style = MaterialTheme.typography.bodySmall, color = WashMuted)
+            Text("Akses akun pelanggan di perangkat ini", style = MaterialTheme.typography.bodySmall, color = WashMuted)
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
             Text("Belum memiliki akun?", style = MaterialTheme.typography.bodySmall)
             TextButton(onRegister, modifier = Modifier.testTag("open_register")) { Text("Daftar Akun Baru") }
         }
-        OutlinedButton({ vm.loginDemo(); onSuccess() }, Modifier.fillMaxWidth().testTag("demo_login"), shape = MaterialTheme.shapes.extraLarge) { Text("Coba akun demo") }
+        OutlinedButton({
+            busy = true
+            scope.launch(Dispatchers.Main.immediate) {
+                if (vm.loginDemo()) onSuccess() else loginError = vm.errorMessage
+                busy = false
+            }
+        }, Modifier.fillMaxWidth().testTag("demo_login"), enabled = !busy, shape = MaterialTheme.shapes.extraLarge) { Text("Coba akun demo") }
         Text("Laundry lebih bersih, hemat air, dan higienis.", Modifier.fillMaxWidth(), color = WashMuted,
             style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
     }
@@ -85,6 +90,7 @@ fun RegisterScreen(vm: MaxwashViewModel, onSuccess: () -> Unit, onBack: () -> Un
     var confirm by rememberSaveable { mutableStateOf("") }
     var touched by rememberSaveable { mutableIntStateOf(0) }
     var numericError by rememberSaveable { mutableStateOf<String?>(null) }
+    var registrationError by rememberSaveable { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     fun error(bit: Int, value: String?) = if (touched and bit != 0) value else null
@@ -106,15 +112,15 @@ fun RegisterScreen(vm: MaxwashViewModel, onSuccess: () -> Unit, onBack: () -> Un
                 error(16, FormValidation.confirmation(confirm, password)), password = true, enabled = !busy)
             PrimaryButton(if (busy) "Membuat akun…" else "Daftar Sekarang →", {
                 busy = true
-                scope.launch {
-                    delay(400)
-                    if (vm.register(name, phone, email, password, confirm)) onSuccess()
+                scope.launch(Dispatchers.Main.immediate) {
+                    if (vm.register(name, phone, email, password, confirm)) onSuccess() else registrationError = vm.errorMessage
                     busy = false
                 }
             }, Modifier.testTag("register_submit"), enabled = valid && !busy)
+            registrationError?.let { Text(it, color = WashError, modifier = Modifier.testTag("register_error")) }
             Text("Password minimal 8 karakter. Nomor HP menggunakan awalan 08 atau 62.", style = MaterialTheme.typography.bodySmall, color = WashMuted)
         }
-        Text("Akun untuk simulasi MAXWASH. Data tersimpan selama sesi aplikasi.", Modifier.fillMaxWidth(),
+        Text("Akun dan data laundry tersimpan di perangkat ini.", Modifier.fillMaxWidth(),
             style = MaterialTheme.typography.bodySmall, color = WashMuted, textAlign = TextAlign.Center)
     }
 }

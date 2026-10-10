@@ -1,0 +1,279 @@
+{
+  "customers": [
+    {
+      "phone": "081234567890",
+      "outletId": "OUT-001",
+      "email": "andi@example.com",
+      "password": "Maxwash123",
+      "address": "Jl. Bintaro Utama Sektor 7 No. 42, Tangerang Selatan",
+      "membership": "Member Gold",
+      "notificationEnabled": true,
+      "notes": "Deterjen hypoallergenic, pisahkan baju putih",
+      "id": "CUST-001",
+      "fragrance": "Lavender Fresh",
+      "name": "Andi Pratama",
+      "points": 140
+    }
+  ],
+  "fragrances": [
+    "Lavender Fresh",
+    "Ocean Breeze",
+    "Baby Soft"
+  ],
+  "orders": [
+    {
+      "estimatedCollectionAt": "2026-10-11T17:30:00+07:00",
+      "createdAt": "2026-10-10T09:15:00+07:00",
+      "outletId": "OUT-001",
+      "history": [
+        {
+          "status": "RECEIVED",
+          "occurredAt": "2026-10-10T09:15:00+07:00"
+        },
+        {
+          "status": "PROCESSING",
+          "occurredAt": "2026-10-10T10:45:00+07:00"
+        }
+      ],
+      "status": "PROCESSING",
+      "customerId": "CUST-001",
+      "total": 21000,
+      "weightKg": 3.0,
+      "id": "MW-1001",
+      "serviceId": "SVC-001"
+    },
+    {
+      "estimatedCollectionAt": "2026-10-10T17:30:00+07:00",
+      "createdAt": "2026-10-09T09:15:00+07:00",
+      "outletId": "OUT-001",
+      "history": [
+        {
+          "status": "RECEIVED",
+          "occurredAt": "2026-10-09T09:15:00+07:00"
+        },
+        {
+          "status": "PROCESSING",
+          "occurredAt": "2026-10-09T10:45:00+07:00"
+        },
+        {
+          "status": "FINISHED",
+          "occurredAt": "2026-10-09T14:00:00+07:00"
+        },
+        {
+          "status": "PACKED",
+          "occurredAt": "2026-10-09T15:00:00+07:00"
+        },
+        {
+          "status": "READY",
+          "occurredAt": "2026-10-10T17:00:00+07:00"
+        }
+      ],
+      "status": "READY",
+      "customerId": "CUST-001",
+      "total": 50000,
+      "weightKg": 5.0,
+      "id": "MW-1002",
+      "serviceId": "SVC-002"
+    },
+    {
+      "estimatedCollectionAt": "2026-10-07T17:30:00+07:00",
+      "createdAt": "2026-10-07T09:15:00+07:00",
+      "outletId": "OUT-002",
+      "history": [
+        {
+          "status": "RECEIVED",
+          "occurredAt": "2026-10-07T09:15:00+07:00"
+        },
+        {
+          "status": "PROCESSING",
+          "occurredAt": "2026-10-07T10:45:00+07:00"
+        },
+        {
+          "status": "FINISHED",
+          "occurredAt": "2026-10-07T14:00:00+07:00"
+        },
+        {
+          "status": "PACKED",
+          "occurredAt": "2026-10-07T15:00:00+07:00"
+        },
+        {
+          "status": "READY",
+          "occurredAt": "2026-10-07T17:00:00+07:00"
+        },
+        {
+          "status": "COLLECTED",
+          "occurredAt": "2026-10-07T17:30:00+07:00"
+        }
+      ],
+      "status": "COLLECTED",
+      "customerId": "CUST-001",
+      "total": 32000,
+      "weightKg": 2.0,
+      "id": "MW-1003",
+      "serviceId": "SVC-003"
+    },
+    {
+      "estimatedCollectionAt": "2026-10-10T17:30:00+07:00",
+      "createdAt": "2026-10-09T09:15:00+07:00",
+      "outletId": "OUT-001",
+      "history": [
+        {
+          "status": "RECEIVED",
+          "occurredAt": "2026-10-09T09:15:00+07:00"
+        },
+        {
+          "status": "PROCESSING",
+          "occurredAt": "2026-10-09T10:45:00+07:00"
+        },
+        {
+          "status": "FINISHED",
+          "occurredAt": "2026-10-09T14:00:00+07:00"
+        },
+        {
+          "status": "PACKED",
+          "occurredAt": "2026-10-09T15:00:00+07:00"
+        }
+      ],
+      "status": "PACKED",
+      "customerId": "CUST-001",
+      "total": 28000,
+      "weightKg": 4.0,
+      "id": "MW-1004",
+      "serviceId": "SVC-001"
+    },
+    {
+      "estimatedCollectionAt": "2026-10-11T17:30:00+07:00",
+      "createdAt": "2026-10-10T09:15:00+07:00",
+      "outletId": "OUT-002",
+      "history": [
+        {
+          "status": "RECEIVED",
+          "occurredAt": "2026-10-10T09:15:00+07:00"
+        }
+      ],
+      "status": "RECEIVED",
+      "customerId": "CUST-001",
+      "total": 18000,
+      "weightKg": 3.0,
+      "id": "MW-1005",
+      "serviceId": "SVC-004"
+    },
+    {
+      "estimatedCollectionAt": "2026-10-10T17:30:00+07:00",
+      "createdAt": "2026-10-09T09:15:00+07:00",
+      "outletId": "OUT-001",
+      "history": [
+        {
+          "status": "RECEIVED",
+          "occurredAt": "2026-10-09T09:15:00+07:00"
+        },
+        {
+          "status": "PROCESSING",
+          "occurredAt": "2026-10-09T10:45:00+07:00"
+        },
+        {
+          "status": "FINISHED",
+          "occurredAt": "2026-10-09T14:00:00+07:00"
+        }
+      ],
+      "status": "FINISHED",
+      "customerId": "CUST-001",
+      "total": 60000,
+      "weightKg": 6.0,
+      "id": "MW-1006",
+      "serviceId": "SVC-002"
+    }
+  ],
+  "promotions": [
+    {
+      "title": "Diskon 25% Cuci Bedcover",
+      "message": "Hubungi outlet untuk informasi promo dan ketersediaan layanan.",
+      "id": "PROMO-001"
+    }
+  ],
+  "outlets": [
+    {
+      "distanceKm": 1.2,
+      "openingHours": "08:00–21:00",
+      "address": "Jl. Kasuari No. 14, Bintaro, Tangerang Selatan",
+      "id": "OUT-001",
+      "name": "MAXWASH Bintaro Sektor 7"
+    },
+    {
+      "distanceKm": 2.5,
+      "openingHours": "08:00–21:00",
+      "address": "Jl. Senopati No. 42, Kebayoran Baru, Jakarta Selatan",
+      "id": "OUT-002",
+      "name": "MAXWASH Senopati"
+    }
+  ],
+  "notifications": [
+    {
+      "orderId": "MW-1002",
+      "isRead": false,
+      "createdAt": "2026-10-10T17:00:00+07:00",
+      "message": "Laundry MW-1002 siap diambil. Tunjukkan QR pelanggan Anda kepada kasir outlet.",
+      "title": "Cucian Siap Diambil!",
+      "id": "N-001"
+    },
+    {
+      "orderId": "MW-1001",
+      "isRead": false,
+      "createdAt": "2026-10-10T10:45:00+07:00",
+      "message": "Laundry MW-1001 sedang diproses di MAXWASH Bintaro Sektor 7.",
+      "title": "Proses Pencucian",
+      "id": "N-002"
+    },
+    {
+      "orderId": "MW-1004",
+      "isRead": true,
+      "createdAt": "2026-10-09T15:00:00+07:00",
+      "message": "Laundry MW-1004 telah dikemas dengan rapi dan higienis.",
+      "title": "Cucian Selesai Dipacking",
+      "id": "N-003"
+    },
+    {
+      "orderId": "MW-1005",
+      "isRead": true,
+      "createdAt": "2026-10-10T09:15:00+07:00",
+      "message": "Pesanan MW-1005 dengan layanan Iron Only telah diterima.",
+      "title": "Pesanan Diterima di Outlet",
+      "id": "N-004"
+    },
+    {
+      "orderId": "MW-1006",
+      "isRead": true,
+      "createdAt": "2026-10-09T14:00:00+07:00",
+      "message": "Laundry MW-1006 selesai dicuci dan dirapikan. Selanjutnya proses packing.",
+      "title": "Proses Laundry Selesai",
+      "id": "N-005"
+    }
+  ],
+  "demoCustomerId": "CUST-001",
+  "services": [
+    {
+      "turnaroundHours": 24,
+      "pricePerKg": 7000,
+      "id": "SVC-001",
+      "name": "Wash & Fold"
+    },
+    {
+      "turnaroundHours": 24,
+      "pricePerKg": 10000,
+      "id": "SVC-002",
+      "name": "Wash & Iron"
+    },
+    {
+      "turnaroundHours": 4,
+      "pricePerKg": 16000,
+      "id": "SVC-003",
+      "name": "Express Laundry"
+    },
+    {
+      "turnaroundHours": 24,
+      "pricePerKg": 6000,
+      "id": "SVC-004",
+      "name": "Iron Only"
+    }
+  ]
+}

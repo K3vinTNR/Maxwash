@@ -1,5 +1,7 @@
 # Analisis MAXWASH sebelum implementasi
 
+Catatan perubahan lingkup: permintaan pengguna selanjutnya mengganti data mock dengan Room local storage. Ketentuan awal tanpa database di bawah adalah riwayat prototipe; implementasi saat ini dijelaskan dalam [ROOM_STORAGE.md](ROOM_STORAGE.md).
+
 Analisis: 10 Oktober 2026. Ketiga dokumen dibaca sebelum kode aplikasi diubah.
 
 ## Sumber dan batas lingkup

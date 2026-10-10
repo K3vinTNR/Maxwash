@@ -11,14 +11,18 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlin.math.roundToInt
 import org.umn.maxwash.data.*
 import org.umn.maxwash.ui.MaxwashViewModel
 import org.umn.maxwash.ui.components.*
@@ -27,8 +31,11 @@ import org.umn.maxwash.ui.theme.*
 @Composable
 fun OrdersScreen(vm: MaxwashViewModel, onOrder: (String) -> Unit, feedback: (String) -> Unit) {
     val orders = vm.visibleOrders
+    var adding by rememberSaveable { mutableStateOf(false) }
     LazyColumn(Modifier.fillMaxSize().testTag("orders_list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
+            PrimaryButton("Catat Pesanan", { adding = true }, Modifier.testTag("add_order"), enabled = vm.services.isNotEmpty() && vm.outlets.isNotEmpty())
+            Spacer(Modifier.height(12.dp))
             OutlinedTextField(vm.search, { vm.search = it }, Modifier.fillMaxWidth().testTag("order_search"),
                 placeholder = { Text("Cari no. pesanan / layanan…", style = MaterialTheme.typography.bodyMedium) },
                 leadingIcon = { Icon(Icons.Outlined.Search, null) },
@@ -40,7 +47,7 @@ fun OrdersScreen(vm: MaxwashViewModel, onOrder: (String) -> Unit, feedback: (Str
         item {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 OrderFilter.entries.forEach { filter ->
-                    val count = MockRepository.filterOrders(filter, "").size
+                    val count = vm.orders.filterOrders(filter, "").size
                     FilterChip(vm.filter == filter, { vm.filter = filter }, label = { Text("${filter.label} ($count)", style = MaterialTheme.typography.labelSmall) },
                         shape = CircleShape, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = WashTeal, selectedLabelColor = Color.White,
                             containerColor = WashSoftBlue), border = null, modifier = Modifier.testTag("filter_${filter.name}"))
@@ -53,20 +60,26 @@ fun OrdersScreen(vm: MaxwashViewModel, onOrder: (String) -> Unit, feedback: (Str
                     IconTile(Icons.Outlined.DryCleaning, background = Color(0xFFCCE9FF))
                     Column(Modifier.weight(1f)) {
                         SectionLabel("AKTIVITAS BULAN INI")
-                        Text("${weight(MockRepository.orders.sumOf { it.weightKg })} · ${MockRepository.orders.size} pesanan", style = MaterialTheme.typography.titleMedium)
+                        Text("${weight(vm.monthOrders.sumOf { it.weightKg })} · ${vm.monthOrders.size} pesanan", style = MaterialTheme.typography.titleMedium)
                     }
                     Icon(Icons.Outlined.AutoAwesome, null, tint = WashTeal)
                 }
             }
         }
         if (orders.isEmpty()) item { EmptyState("Tidak ada pesanan", "Coba kata kunci lain atau ubah filter.", Modifier.testTag("orders_empty")) }
-        items(orders, key = { it.id }) { order -> OrderCard(order, onOrder, feedback) }
-        item { Text("Menampilkan ${orders.size} pesanan dari data simulasi", Modifier.padding(vertical = 20.dp), style = MaterialTheme.typography.bodySmall, color = WashMuted) }
+        items(orders, key = { it.id }) { order -> OrderCard(order, vm.outlet(order.outletId)?.name.orEmpty(), onOrder, feedback) }
+        item { Text("Menampilkan ${orders.size} pesanan tersimpan", Modifier.padding(vertical = 20.dp), style = MaterialTheme.typography.bodySmall, color = WashMuted) }
+    }
+    if (adding) NewOrderDialog(vm, { adding = false }) { id ->
+        adding = false
+        vm.filter = OrderFilter.ALL
+        vm.search = ""
+        onOrder(id)
     }
 }
 
 @Composable
-private fun OrderCard(order: LaundryOrder, onOrder: (String) -> Unit, feedback: (String) -> Unit) {
+private fun OrderCard(order: LaundryOrder, outletName: String, onOrder: (String) -> Unit, feedback: (String) -> Unit) {
     WashCard(Modifier.testTag("order_${order.id}").clickable { onOrder(order.id) }) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             IconTile(Icons.Outlined.LocalLaundryService, Modifier.size(30.dp))
@@ -80,29 +93,77 @@ private fun OrderCard(order: LaundryOrder, onOrder: (String) -> Unit, feedback: 
             Text(order.service, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
             Text(rupiah(order.total), color = WashTeal, style = MaterialTheme.typography.titleMedium)
         }
-        Text("Berat: ${weight(order.weightKg)} · ${if (order.service == "Express Laundry") "Express" else "Reguler"}", style = MaterialTheme.typography.bodySmall, color = WashMuted)
-        Text(MockRepository.outlet(order.outletId).name, style = MaterialTheme.typography.bodySmall, color = WashMuted)
+        Text("Berat: ${weight(order.weightKg)} · Estimasi ${order.turnaroundHours} jam", style = MaterialTheme.typography.bodySmall, color = WashMuted)
+        Text(outletName, style = MaterialTheme.typography.bodySmall, color = WashMuted)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button({ onOrder(order.id) }, Modifier.weight(1f), shape = MaterialTheme.shapes.small) { Text(if (order.isCompleted) "Lihat Rincian" else "Lacak Pesanan", style = MaterialTheme.typography.labelMedium) }
-            FilledTonalButton({ feedback("Nota demo ${order.id} · ${rupiah(order.total)} · ${order.service}") }, Modifier.weight(1f), shape = MaterialTheme.shapes.small,
+            FilledTonalButton({ feedback("Nota ${order.id} · ${rupiah(order.total)} · ${order.service}") }, Modifier.weight(1f), shape = MaterialTheme.shapes.small,
                 colors = ButtonDefaults.filledTonalButtonColors(containerColor = WashSoftBlue, contentColor = WashNavy)) { Text("Nota Digital", style = MaterialTheme.typography.labelMedium) }
         }
     }
 }
 
 @Composable
-fun OrderDetailsScreen(orderId: String?, onLocation: () -> Unit, feedback: (String) -> Unit) {
-    val order = MockRepository.order(orderId)
+private fun NewOrderDialog(vm: MaxwashViewModel, onDismiss: () -> Unit, onSaved: (String) -> Unit) {
+    var serviceId by rememberSaveable { mutableStateOf(vm.services.firstOrNull()?.id.orEmpty()) }
+    var outletId by rememberSaveable { mutableStateOf(vm.selectedOutletId.ifBlank { vm.outlets.firstOrNull()?.id.orEmpty() }) }
+    var weightInput by rememberSaveable { mutableStateOf("") }
+    var serviceMenu by remember { mutableStateOf(false) }
+    var outletMenu by remember { mutableStateOf(false) }
+    var saving by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val service = vm.services.find { it.id == serviceId }
+    val outlet = vm.outlet(outletId)
+    val kg = weightInput.replace(',', '.').toDoubleOrNull()
+    val valid = kg != null && kg.isFinite() && kg > 0 && kg <= 100 && service != null && outlet != null
+    AlertDialog(onDismissRequest = { if (!saving) onDismiss() }, title = { Text("Catat Pesanan") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Catatan laundry disimpan di perangkat ini. Konfirmasi penerimaan cucian langsung dengan outlet.", style = MaterialTheme.typography.bodySmall, color = WashMuted)
+                Box {
+                    OutlinedButton({ serviceMenu = true }, Modifier.fillMaxWidth().testTag("new_order_service"), enabled = !saving) { Text(service?.name ?: "Pilih layanan") }
+                    DropdownMenu(serviceMenu, { serviceMenu = false }) {
+                        vm.services.forEach { item -> DropdownMenuItem(text = { Text("${item.name} · ${rupiah(item.pricePerKg)}/kg") },
+                            onClick = { serviceId = item.id; serviceMenu = false }) }
+                    }
+                }
+                Box {
+                    OutlinedButton({ outletMenu = true }, Modifier.fillMaxWidth().testTag("new_order_outlet"), enabled = !saving) { Text(outlet?.name ?: "Pilih outlet") }
+                    DropdownMenu(outletMenu, { outletMenu = false }) {
+                        vm.outlets.forEach { item -> DropdownMenuItem(text = { Text(item.name) }, onClick = { outletId = item.id; outletMenu = false }) }
+                    }
+                }
+                WashField(weightInput, { weightInput = it }, "Berat (kg)", "new_order_weight", KeyboardType.Decimal,
+                    error = if (weightInput.isNotBlank() && !valid) "Masukkan berat lebih dari 0, maksimal 100 kg" else null, enabled = !saving)
+                if (valid) Text("Total: ${rupiah((kg!! * service!!.pricePerKg).roundToInt())} · ${service.turnaroundHours} jam", color = WashTeal)
+                error?.let { Text(it, color = WashError) }
+            }
+        },
+        confirmButton = { TextButton({
+            saving = true
+            scope.launch(Dispatchers.Main.immediate) {
+                val id = vm.createOrder(serviceId, kg!!, outletId)
+                if (id != null) onSaved(id) else error = vm.errorMessage
+                saving = false
+            }
+        }, Modifier.testTag("new_order_save"), enabled = valid && !saving) { Text(if (saving) "Menyimpan…" else "Simpan") } },
+        dismissButton = { TextButton(onDismiss, enabled = !saving) { Text("Batal") } })
+}
+
+@Composable
+fun OrderDetailsScreen(vm: MaxwashViewModel, orderId: String?, onLocation: () -> Unit, feedback: (String) -> Unit) {
+    val order = vm.order(orderId)
     if (order == null) {
         EmptyState("Pesanan tidak ditemukan", "ID ${orderId ?: "kosong"} tidak tersedia. Silakan kembali ke daftar pesanan.", Modifier.testTag("order_missing")); return
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp).testTag("order_details"), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Pill("• STATUS PESANAN")
-            Text("Data simulasi", style = MaterialTheme.typography.labelSmall, color = WashMuted)
+            Text("Tersimpan di perangkat", style = MaterialTheme.typography.labelSmall, color = WashMuted)
         }
         WashCard {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { SectionLabel("NOMOR PESANAN"); Pill(if (order.service == "Express Laundry") "EXPRESS 4 JAM" else "REGULER 24 JAM") }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { SectionLabel("NOMOR PESANAN"); Pill("ESTIMASI ${order.turnaroundHours} JAM") }
             Text("#${order.id}", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.testTag("detail_id"))
             Row(Modifier.fillMaxWidth().background(WashSoftBlue, MaterialTheme.shapes.small).padding(12.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -119,14 +180,14 @@ fun OrderDetailsScreen(orderId: String?, onLocation: () -> Unit, feedback: (Stri
             Text("Diterima: ${order.date}", style = MaterialTheme.typography.bodySmall, color = WashMuted)
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable(onClick = onLocation)) {
                 Icon(Icons.Outlined.Storefront, null, Modifier.size(18.dp), tint = WashTeal)
-                Text("  ${MockRepository.outlet(order.outletId).name}", style = MaterialTheme.typography.bodySmall)
+                Text("  ${vm.outlet(order.outletId)?.name.orEmpty()}", style = MaterialTheme.typography.bodySmall)
             }
-            Text(MockRepository.outlet(order.outletId).address, style = MaterialTheme.typography.bodySmall, color = WashMuted)
+            Text(vm.outlet(order.outletId)?.address.orEmpty(), style = MaterialTheme.typography.bodySmall, color = WashMuted)
         }
         Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(WashBlue, WashTeal)), MaterialTheme.shapes.small).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Pill("TAHAP ${order.status.ordinal + 1} DARI 6", Color.White, Color(0x33002346))
+                Pill("TAHAP ${order.status.ordinal + 1} DARI ${LaundryStatus.entries.size}", Color.White, Color(0x33002346))
                 Text("• ${if (order.isCompleted) "Selesai" else "Berjalan"}", color = WashMint, style = MaterialTheme.typography.labelSmall)
             }
             Text(order.status.label, color = Color.White, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.testTag("detail_status"))
@@ -142,7 +203,7 @@ fun OrderDetailsScreen(orderId: String?, onLocation: () -> Unit, feedback: (Stri
         WashCard {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Rincian Pelacakan", style = MaterialTheme.typography.titleMedium)
-                Text("6 Tahapan", style = MaterialTheme.typography.labelSmall, color = WashTeal)
+                Text("${LaundryStatus.entries.size} Tahapan", style = MaterialTheme.typography.labelSmall, color = WashTeal)
             }
             LaundryStatus.entries.forEach { stage ->
                 val current = stage == order.status

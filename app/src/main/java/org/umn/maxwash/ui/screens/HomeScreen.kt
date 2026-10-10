@@ -16,7 +16,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import org.umn.maxwash.data.MockRepository
+import java.util.Locale
 import org.umn.maxwash.ui.MaxwashViewModel
 import org.umn.maxwash.ui.components.*
 import org.umn.maxwash.ui.theme.*
@@ -24,19 +24,21 @@ import org.umn.maxwash.ui.theme.*
 @Composable
 fun HomeScreen(vm: MaxwashViewModel, onOrder: (String) -> Unit, navigate: (String) -> Unit,
     onLocation: () -> Unit, feedback: (String) -> Unit) {
-    val active = MockRepository.orders.first { !it.isCompleted }
-    val latest = MockRepository.notifications.first()
+    val customer = vm.customer ?: return
+    val active = vm.orders.firstOrNull { !it.isCompleted }
+    val latest = vm.notifications.firstOrNull()
+    val monthOrders = vm.monthOrders
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Halo, ${vm.customer.name.substringBefore(" ")} 👋", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.testTag("home_greeting"))
-                Pill("★ Member Gold · 140 Poin")
+                Text("Halo, ${customer.name.substringBefore(" ")} 👋", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.testTag("home_greeting"))
+                Pill("★ ${customer.membership} · ${customer.points} Poin")
             }
             FilledTonalIconButton({ navigate("profile") }, colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color.White)) {
                 Icon(Icons.Outlined.QrCode2, "Lihat QR pelanggan", tint = WashTeal)
             }
         }
-        WashCard {
+        if (active != null) WashCard {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("ORDER #${active.id}", style = MaterialTheme.typography.titleMedium)
                 StatusPill(active.status)
@@ -55,6 +57,8 @@ fun HomeScreen(vm: MaxwashViewModel, onOrder: (String) -> Unit, navigate: (Strin
                 }
             }
             PrimaryButton("Lacak Pesanan →", { onOrder(active.id) }, Modifier.testTag("home_track"))
+        } else WashCard {
+            EmptyState("Belum ada pesanan aktif", "Catat pesanan Anda melalui menu Pesanan.", Modifier.testTag("home_orders_empty"))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("Menu Utama", style = MaterialTheme.typography.titleSmall)
@@ -62,8 +66,11 @@ fun HomeScreen(vm: MaxwashViewModel, onOrder: (String) -> Unit, navigate: (Strin
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             listOf(Triple("Pesanan", Icons.Outlined.LocalLaundryService, { navigate("orders") }),
-                Triple("Cek Tarif", Icons.Outlined.Calculate, { feedback("Tarif demo/kg: Wash & Fold Rp 7.000 · Wash & Iron Rp 10.000 · Express Rp 16.000 · Iron Only Rp 6.000") }),
-                Triple("Nota Digital", Icons.AutoMirrored.Outlined.ReceiptLong, { onOrder("MW-1003") }),
+                Triple("Cek Tarif", Icons.Outlined.Calculate, { feedback(vm.services.joinToString(" · ") { "${it.name} ${rupiah(it.pricePerKg)}/kg" }.ifBlank { "Tarif belum tersedia." }) }),
+                Triple("Nota Digital", Icons.AutoMirrored.Outlined.ReceiptLong, {
+                    val receipt = vm.orders.firstOrNull { it.isCompleted } ?: vm.orders.firstOrNull()
+                    if (receipt != null) onOrder(receipt.id) else feedback("Belum ada pesanan untuk ditampilkan.")
+                }),
                 Triple("Lokasi", Icons.Outlined.LocationOn, onLocation)).forEach { (label, icon, action) ->
                 Column(Modifier.weight(1f).clickable(onClick = action).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -74,7 +81,9 @@ fun HomeScreen(vm: MaxwashViewModel, onOrder: (String) -> Unit, navigate: (Strin
         }
         WashCard {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                listOf(Triple("Bulan Ini", "6", "Pesanan"), Triple("Total Cucian", "23.0", "Kilogram"), Triple("Pesanan Aktif", "5", "Berjalan")).forEach { (label, value, suffix) ->
+                listOf(Triple("Bulan Ini", monthOrders.size.toString(), "Pesanan"),
+                    Triple("Total Cucian", String.format(Locale.US, "%.1f", vm.orders.sumOf { it.weightKg }), "Kilogram"),
+                    Triple("Pesanan Aktif", vm.orders.count { !it.isCompleted }.toString(), "Berjalan")).forEach { (label, value, suffix) ->
                     Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(label, style = MaterialTheme.typography.bodySmall, color = WashMuted)
                         Text(value, style = MaterialTheme.typography.headlineSmall, color = WashTeal)
@@ -83,24 +92,24 @@ fun HomeScreen(vm: MaxwashViewModel, onOrder: (String) -> Unit, navigate: (Strin
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(WashBlue, WashTeal)), MaterialTheme.shapes.large).padding(16.dp),
+        vm.promotions.forEach { promotion -> Row(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(WashBlue, WashTeal)), MaterialTheme.shapes.large).padding(16.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Icon(Icons.Outlined.LocalOffer, null, tint = Color.White)
             Column(Modifier.weight(1f)) {
                 Text("PROMO SPESIAL", style = MaterialTheme.typography.labelSmall, color = Color.White)
-                Text("Diskon 25% Cuci Bedcover", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                Text(promotion.title, style = MaterialTheme.typography.titleMedium, color = Color.White)
             }
-            FilledTonalButton({ feedback("Promo ini adalah tampilan demo. Belum dapat digunakan untuk transaksi.") }, colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color.White, contentColor = WashTeal)) { Text("Klaim") }
-        }
+            FilledTonalButton({ feedback(promotion.message) }, colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color.White, contentColor = WashTeal)) { Text("Info") }
+        } }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("Aktivitas Terakhir", style = MaterialTheme.typography.titleSmall)
             TextButton({ navigate("notifications") }) { Text("Lihat Semua") }
         }
-        WashCard(Modifier.clickable { vm.markRead(latest.id); onOrder(latest.orderId) }) {
+        if (latest != null) WashCard(Modifier.clickable { vm.markRead(latest.id); onOrder(latest.orderId) }) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 IconTile(Icons.Outlined.CheckCircle, tint = WashGreen)
                 Column { Text(latest.title, style = MaterialTheme.typography.titleSmall); Text("#${latest.orderId} · ${latest.time}", style = MaterialTheme.typography.bodySmall, color = WashMuted) }
             }
-        }
+        } else Text("Belum ada aktivitas laundry.", color = WashMuted)
     }
 }

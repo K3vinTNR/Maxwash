@@ -12,6 +12,7 @@ import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 import org.umn.maxwash.ui.components.*
 import org.umn.maxwash.ui.screens.*
 import org.umn.maxwash.ui.theme.*
@@ -24,7 +25,7 @@ fun MaxwashApp(vm: MaxwashViewModel = viewModel(), startDestination: String = "s
     val auth = route in listOf("splash", "login", "register")
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val feedback: (String) -> Unit = { message -> scope.launch { snackbar.showSnackbar(message) } }
+    val feedback: (String) -> Unit = { message -> scope.launch(Dispatchers.Main.immediate) { snackbar.showSnackbar(message) } }
     fun topNavigate(destination: String) {
         nav.navigate(destination) {
             popUpTo("home") { saveState = true }
@@ -33,11 +34,33 @@ fun MaxwashApp(vm: MaxwashViewModel = viewModel(), startDestination: String = "s
         }
     }
     fun enterHome() { nav.navigate("home") { popUpTo(nav.graph.id) { inclusive = true }; launchSingleTop = true } }
-    fun logout() { vm.logout(); nav.navigate("login") { popUpTo(nav.graph.id) { inclusive = true }; launchSingleTop = true } }
+    fun logout() { scope.launch(Dispatchers.Main.immediate) {
+        if (vm.logout()) nav.navigate("login") { popUpTo(nav.graph.id) { inclusive = true }; launchSingleTop = true }
+    } }
     fun details(id: String) { nav.navigate("orders/$id") }
-    LaunchedEffect(route, vm.signedIn) {
-        // A process restart resets this local prototype account. Never restore a protected screen without a session.
-        if (!auth && !vm.signedIn) nav.navigate("login") { popUpTo(nav.graph.id) { inclusive = true } }
+    LaunchedEffect(route, vm.signedIn, vm.isLoading) {
+        if (!vm.isLoading) {
+            if (!auth && !vm.signedIn) nav.navigate("login") { popUpTo(nav.graph.id) { inclusive = true } }
+            else if (route in listOf("login", "register") && vm.signedIn) enterHome()
+        }
+    }
+    LaunchedEffect(vm.errorMessage) {
+        if (vm.errorMessage != null && !auth) {
+            snackbar.showSnackbar(vm.errorMessage!!)
+            vm.clearError()
+        }
+    }
+    if (vm.isLoading || (vm.errorMessage != null && vm.outlets.isEmpty())) {
+        Surface(Modifier.fillMaxSize(), color = WashBackground) {
+            Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                if (vm.isLoading) CircularProgressIndicator()
+                else {
+                    Text(vm.errorMessage.orEmpty())
+                    TextButton(vm::retryLoading) { Text("Coba lagi") }
+                }
+            }
+        }
+        return
     }
     Surface(Modifier.fillMaxSize(), color = WashBackground) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
@@ -54,7 +77,7 @@ fun MaxwashApp(vm: MaxwashViewModel = viewModel(), startDestination: String = "s
                 snackbarHost = { SnackbarHost(snackbar) }) { padding ->
                 NavHost(nav, startDestination, modifier = Modifier.padding(padding).imePadding()) {
                     composable("splash") {
-                        LaunchedEffect(Unit) { delay(500); nav.navigate("login") { popUpTo("splash") { inclusive = true } } }
+                        LaunchedEffect(Unit) { delay(500); nav.navigate(if (vm.signedIn) "home" else "login") { popUpTo("splash") { inclusive = true } } }
                         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                             WashLogo(72); Spacer(Modifier.height(16.dp)); Text("MAXWASH", style = MaterialTheme.typography.headlineLarge)
                             Text("Laundry Pintar & Praktis", color = WashMuted)
@@ -67,8 +90,8 @@ fun MaxwashApp(vm: MaxwashViewModel = viewModel(), startDestination: String = "s
                     composable("history") { OrdersScreen(vm, ::details, feedback) }
                     composable("orders/{orderId}", arguments = listOf(navArgument("orderId") { type = NavType.StringType })) { backStack ->
                         val id = backStack.arguments?.getString("orderId")
-                        OrderDetailsScreen(id, {
-                            org.umn.maxwash.data.MockRepository.order(id)?.let { vm.selectedOutletId = it.outletId }
+                        OrderDetailsScreen(vm, id, {
+                            vm.order(id)?.let { vm.selectOutlet(it.outletId) }
                             nav.navigate("location")
                         }, feedback)
                     }

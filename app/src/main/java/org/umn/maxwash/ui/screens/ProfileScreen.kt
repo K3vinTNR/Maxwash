@@ -19,6 +19,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 import org.umn.maxwash.data.*
 import org.umn.maxwash.ui.MaxwashViewModel
 import org.umn.maxwash.ui.components.*
@@ -26,12 +28,14 @@ import org.umn.maxwash.ui.theme.*
 
 @Composable
 fun ProfileScreen(vm: MaxwashViewModel, onLogout: () -> Unit, onLocation: () -> Unit, feedback: (String) -> Unit) {
-    val customer = vm.customer
+    val customer = vm.customer ?: return
+    val scope = rememberCoroutineScope()
+    var saving by remember { mutableStateOf(false) }
     var editing by rememberSaveable { mutableStateOf(false) }
     var qrDialog by rememberSaveable { mutableStateOf(false) }
-    var fragrance by rememberSaveable { mutableStateOf(customer.fragrance) }
-    var notes by rememberSaveable { mutableStateOf(customer.notes) }
-    var notifications by rememberSaveable { mutableStateOf(customer.notificationEnabled) }
+    var fragrance by rememberSaveable(customer.id) { mutableStateOf(customer.fragrance) }
+    var notes by rememberSaveable(customer.id) { mutableStateOf(customer.notes) }
+    var notifications by rememberSaveable(customer.id) { mutableStateOf(customer.notificationEnabled) }
     var fragranceMenu by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -40,11 +44,11 @@ fun ProfileScreen(vm: MaxwashViewModel, onLogout: () -> Unit, onLocation: () -> 
             }
             Text(customer.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.testTag("profile_name"))
             Text(customer.phone, color = WashMuted)
-            Pill("★ Member Gold · 140 Poin", WashTeal, WashLavender)
+            Pill("★ ${customer.membership} · ${customer.points} Poin", WashTeal, WashLavender)
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             SectionLabel("DATA DIRI")
-            TextButton({ editing = true }, Modifier.testTag("edit_profile")) { Icon(Icons.Outlined.Edit, null, Modifier.size(16.dp)); Text(" Edit") }
+            TextButton({ editing = true }, Modifier.testTag("edit_profile"), enabled = !saving) { Icon(Icons.Outlined.Edit, null, Modifier.size(16.dp)); Text(" Edit") }
         }
         WashCard {
             ProfileRow(Icons.Outlined.Badge, "Nama Lengkap", customer.name)
@@ -53,7 +57,7 @@ fun ProfileScreen(vm: MaxwashViewModel, onLogout: () -> Unit, onLocation: () -> 
             HorizontalDivider(color = WashBorder)
             ProfileRow(Icons.Outlined.Email, "Email", customer.email)
             HorizontalDivider(color = WashBorder)
-            ProfileRow(Icons.Outlined.LocationOn, "Alamat", customer.address)
+            ProfileRow(Icons.Outlined.LocationOn, "Alamat", customer.address.ifBlank { "Belum diisi" })
         }
         WashCard(Modifier.clickable { qrDialog = true }) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -76,7 +80,7 @@ fun ProfileScreen(vm: MaxwashViewModel, onLogout: () -> Unit, onLocation: () -> 
                     Icon(Icons.Outlined.ExpandMore, "Pilih aroma parfum", tint = WashMuted)
                 }
                 DropdownMenu(fragranceMenu, { fragranceMenu = false }) {
-                    listOf("Lavender Fresh", "Ocean Breeze", "Baby Soft").forEach { value ->
+                    vm.fragrances.forEach { value ->
                         DropdownMenuItem(text = { Text(value) }, onClick = { fragrance = value; fragranceMenu = false })
                     }
                 }
@@ -88,7 +92,7 @@ fun ProfileScreen(vm: MaxwashViewModel, onLogout: () -> Unit, onLocation: () -> 
                 IconTile(Icons.Outlined.NotificationsNone)
                 Column(Modifier.weight(1f).padding(start = 10.dp)) {
                     Text("Update Status Laundry", style = MaterialTheme.typography.titleSmall)
-                    Text("Preferensi notifikasi demo", style = MaterialTheme.typography.bodySmall, color = WashMuted)
+                    Text("Simpan preferensi update laundry", style = MaterialTheme.typography.bodySmall, color = WashMuted)
                 }
                 Switch(notifications, { notifications = it }, Modifier.testTag("profile_notifications"))
             }
@@ -98,27 +102,42 @@ fun ProfileScreen(vm: MaxwashViewModel, onLogout: () -> Unit, onLocation: () -> 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 IconTile(Icons.Outlined.Storefront)
                 Column(Modifier.weight(1f)) {
-                    Text(MockRepository.outlet(customer.outletId).name, style = MaterialTheme.typography.titleSmall)
-                    Text("• Buka hingga 21:00", color = WashGreen, style = MaterialTheme.typography.bodySmall)
+                    Text(vm.outlet(customer.outletId)?.name ?: "Belum dipilih", style = MaterialTheme.typography.titleSmall)
+                    Text(vm.outlet(customer.outletId)?.openingHours.orEmpty(), color = WashGreen, style = MaterialTheme.typography.bodySmall)
                 }
                 TextButton({
-                    val next = if (customer.outletId == "OUT-001") "OUT-002" else "OUT-001"
-                    vm.updateProfile(customer.copy(outletId = next)); vm.selectedOutletId = next
-                    feedback("Outlet langganan diubah")
-                }, Modifier.testTag("change_profile_outlet")) { Text("Ganti") }
+                    val next = vm.outlets.getOrNull((vm.outlets.indexOfFirst { it.id == customer.outletId } + 1) % vm.outlets.size)
+                    if (next != null) {
+                        saving = true
+                        scope.launch(Dispatchers.Main.immediate) {
+                            if (vm.updateProfile(customer.copy(outletId = next.id))) feedback("Outlet langganan diubah")
+                            saving = false
+                        }
+                    }
+                }, Modifier.testTag("change_profile_outlet"), enabled = !saving && vm.outlets.isNotEmpty()) { Text("Ganti") }
             }
-            TextButton({ vm.selectedOutletId = customer.outletId; onLocation() }) { Text("Lihat lokasi outlet →") }
+            TextButton({ vm.selectOutlet(customer.outletId); onLocation() }, enabled = customer.outletId.isNotBlank()) { Text("Lihat lokasi outlet →") }
         }
-        PrimaryButton("Simpan Perubahan", {
-            if (vm.updateProfile(customer.copy(fragrance = fragrance, notes = notes, notificationEnabled = notifications))) feedback("Perubahan profil disimpan")
-        }, Modifier.testTag("save_preferences"))
+        PrimaryButton(if (saving) "Menyimpan…" else "Simpan Perubahan", {
+            saving = true
+            scope.launch(Dispatchers.Main.immediate) {
+                if (vm.updateProfile(customer.copy(fragrance = fragrance, notes = notes, notificationEnabled = notifications))) feedback("Perubahan profil disimpan")
+                saving = false
+            }
+        }, Modifier.testTag("save_preferences"), enabled = !saving)
         TextButton(onLogout, Modifier.align(Alignment.CenterHorizontally).testTag("logout"), colors = ButtonDefaults.textButtonColors(contentColor = WashError)) {
             Icon(Icons.AutoMirrored.Outlined.Logout, null, Modifier.size(18.dp)); Text(" Keluar dari Akun")
         }
         Text("MAXWASH CUSTOMER · UTS PROTOTYPE", Modifier.fillMaxWidth(), style = MaterialTheme.typography.labelSmall, color = WashMuted, textAlign = TextAlign.Center)
     }
     if (editing) EditProfileDialog(customer, { editing = false }) {
-        if (vm.updateProfile(it)) { editing = false; feedback("Data diri diperbarui") }
+        if (!saving) {
+            saving = true
+            scope.launch(Dispatchers.Main.immediate) {
+                if (vm.updateProfile(it)) { editing = false; feedback("Data diri diperbarui") }
+                saving = false
+            }
+        }
     }
     if (qrDialog) AlertDialog(onDismissRequest = { qrDialog = false }, title = { Text("QR Pelanggan") },
         text = { Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {

@@ -10,24 +10,25 @@ import java.util.Locale
 import java.util.UUID
 import kotlin.math.roundToInt
 
-class RoomRepository(private val database: MaxwashDatabase, private val seedData: SeedData) {
+class RoomRepository(private val database: MaxwashDatabase, private val catalogData: CatalogData) {
     private val dao = database.dao()
 
-    suspend fun initialize() = withContext(Dispatchers.IO) {
+    suspend fun initialize(): Unit = withContext(Dispatchers.IO) {
         database.withTransaction {
             if (dao.metadata("initialized") == null) {
-                val seed = seedData.read()
-                dao.saveOutlets(seed.outlets)
-                dao.saveServices(seed.services)
-                dao.saveFragrances(seed.fragrances)
-                dao.savePromotions(seed.promotions)
-                dao.insertCustomers(seed.customers)
-                dao.saveOrders(seed.orders)
-                dao.saveHistory(seed.history)
-                dao.saveNotifications(seed.notifications)
+                val catalog = catalogData.read()
+                dao.saveOutlets(catalog.outlets)
+                dao.saveServices(catalog.services)
+                dao.saveFragrances(catalog.fragrances)
+                dao.savePromotions(catalog.promotions)
                 dao.saveSession(SessionEntity())
-                dao.insertMetadata(MetadataEntity("demoCustomerId", seed.demoCustomerId))
                 dao.insertMetadata(MetadataEntity("initialized", "1"))
+            }
+            // Older installs identify the bundled account by metadata, even after profile edits.
+            dao.metadata("demoCustomerId")?.let { id ->
+                if (dao.session()?.customerId == id) dao.saveSession(SessionEntity())
+                dao.deleteCustomer(id)
+                dao.deleteMetadata("demoCustomerId")
             }
         }
     }
@@ -81,12 +82,6 @@ class RoomRepository(private val database: MaxwashDatabase, private val seedData
         if (!PasswordHasher.verify(password, account.passwordHash, account.passwordSalt)) return@withContext false
         dao.saveSession(SessionEntity(customerId = account.id, selectedOutletId = account.outletId))
         true
-    }
-
-    suspend fun loginDemo() = database.withTransaction {
-        val id = requireNotNull(dao.metadata("demoCustomerId")) { "Akun demo belum tersedia." }
-        val account = requireNotNull(dao.customer(id)) { "Akun demo tidak ditemukan." }
-        dao.saveSession(SessionEntity(customerId = id, selectedOutletId = account.outletId))
     }
 
     suspend fun updateProfile(profile: Customer) = database.withTransaction {

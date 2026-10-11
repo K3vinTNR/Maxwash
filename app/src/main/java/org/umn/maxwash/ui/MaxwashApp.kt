@@ -68,7 +68,7 @@ fun MaxwashApp(vm: MaxwashViewModel = viewModel(), startDestination: String = "s
                 topBar = {
                     if (!auth) WashHeader(when (route) {
                         "home" -> "HOME"; "orders" -> "PESANAN SAYA"; "history" -> "RIWAYAT PESANAN"
-                        "profile" -> "PROFILE & QR CODE"; "location" -> "LOKASI LAUNDRY"
+                        "profile" -> "PROFIL PELANGGAN"; "location" -> "LOKASI LAUNDRY"
                         "notifications" -> "NOTIFIKASI"; else -> "ORDER TRACKING"
                     }, vm.unreadCount, { nav.navigate("notifications") { launchSingleTop = true } }, { topNavigate("profile") },
                         if (route in listOf("location", "notifications", "orders/{orderId}")) ({ nav.popBackStack() }) else null)
@@ -93,7 +93,7 @@ fun MaxwashApp(vm: MaxwashViewModel = viewModel(), startDestination: String = "s
                         OrderDetailsScreen(vm, id, {
                             vm.order(id)?.let { vm.selectOutlet(it.outletId) }
                             nav.navigate("location")
-                        }, feedback)
+                        })
                     }
                     composable("location") { LocationScreen(vm, feedback) }
                     composable("profile") { ProfileScreen(vm, ::logout, { nav.navigate("location") }, feedback) }

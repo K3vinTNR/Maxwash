@@ -1,6 +1,11 @@
 package org.umn.maxwash
 
 import android.graphics.Bitmap
+import android.app.Activity
+import android.app.Instrumentation
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.PatternMatcher
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -15,19 +20,52 @@ import org.junit.rules.ExternalResource
 import org.junit.rules.RuleChain
 import org.junit.rules.TestRule
 import java.io.File
+import org.umn.maxwash.data.LaundryStatus
+import org.umn.maxwash.data.local.StatusEventEntity
 
 @RunWith(AndroidJUnit4::class)
 class MaxwashFlowTest {
     val compose = createAndroidComposeRule<MainActivity>()
+    private lateinit var activeOrderId: String
+    private lateinit var completedOrderId: String
+    private lateinit var activeNotificationId: String
     @get:Rule val rules: TestRule = RuleChain.outerRule(object : ExternalResource() {
         override fun before() {
             val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as TestMaxwashApplication
             app.database.clearAllTables()
-            runBlocking { app.repository.initialize() }
+            runBlocking {
+                val repository = app.repository
+                repository.initialize()
+                repository.register("Test Customer", "081234567899", "customer@example.com", "CustomerPass123", "CustomerPass123")
+                val customer = repository.readData().customer!!
+                repository.updateProfile(customer.copy(address = "Jl. Pengujian No. 1"))
+                activeOrderId = repository.createOrder("SVC-001", 3.0, "OUT-001")
+                completedOrderId = repository.createOrder("SVC-003", 2.0, "OUT-002")
+                val dao = app.database.dao()
+                val orders = dao.customerWithOrders(customer.id)!!.orders
+                dao.saveOrders(orders.map { detail -> detail.order.copy(status =
+                    if (detail.order.id == activeOrderId) LaundryStatus.PROCESSING.name else LaundryStatus.COLLECTED.name) })
+                dao.saveHistory(orders.flatMap { detail ->
+                    val status = if (detail.order.id == activeOrderId) LaundryStatus.PROCESSING else LaundryStatus.COLLECTED
+                    LaundryStatus.entries.take(status.ordinal + 1).mapIndexed { index, stage ->
+                        StatusEventEntity(detail.order.id, stage.name, detail.order.createdAt + index * 1000L)
+                    }
+                })
+                activeNotificationId = repository.readData().notifications.single { it.orderId == activeOrderId }.id
+                repository.logout()
+            }
         }
     }).around(compose)
-    private fun awaitLogin() = compose.waitUntil(10_000) { compose.onAllNodesWithTag("demo_login").fetchSemanticsNodes().isNotEmpty() }
-    private fun demo() { awaitLogin(); compose.onNodeWithTag("demo_login").performClick(); awaitTag("home_greeting"); compose.onNodeWithTag("home_greeting").assertIsDisplayed() }
+    private fun awaitLogin() = awaitTag("login_submit")
+    private fun login() {
+        awaitLogin()
+        input("login_identifier", "customer@example.com")
+        input("login_password", "CustomerPass123")
+        closeSoftKeyboard()
+        compose.onNodeWithTag("login_submit").performScrollTo().performClick()
+        awaitTag("home_greeting")
+        compose.onNodeWithTag("home_greeting").assertIsDisplayed()
+    }
     private fun awaitTag(tag: String) = compose.waitUntil(10_000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
     private fun awaitText(text: String) = compose.waitUntil(10_000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
     private fun capture(name: String) {
@@ -45,27 +83,29 @@ class MaxwashFlowTest {
         compose.waitForIdle()
         compose.waitUntil(10_000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isEmpty() }
     }
-    private fun captureNative(name: String) {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val file = File(context.getExternalFilesDir("screenshots"), "$name.png")
-        file.outputStream().use { InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot().compress(Bitmap.CompressFormat.PNG, 100, it) }
+    @Test fun loginHasNoDemoEntry() {
+        awaitLogin()
+        compose.onNodeWithText("Coba akun demo").assertDoesNotExist()
+        compose.onNodeWithTag("demo_login").assertDoesNotExist()
+        compose.onNodeWithTag("open_register").assertExists()
+        compose.onNodeWithTag("nav_home").assertDoesNotExist()
     }
 
     @Test fun orderIdFilterAndBackNavigation() {
-        awaitLogin(); capture("login"); demo(); capture("home")
+        awaitLogin(); capture("login"); login(); capture("home")
         compose.onNodeWithTag("nav_orders").performClick(); capture("my-orders")
-        compose.onNodeWithTag("order_MW-1001").performClick()
-        compose.onNodeWithTag("detail_id").assertTextEquals("#MW-1001")
+        compose.onNodeWithTag("order_$activeOrderId").performClick()
+        compose.onNodeWithTag("detail_id").assertTextEquals("#$activeOrderId")
         compose.onNodeWithTag("detail_status").assertTextEquals("Sedang Diproses"); capture("order-details")
-        compose.onNodeWithText("Hubungi Kasir Outlet").performScrollTo(); capture("order-timeline")
+        compose.onNodeWithText("Hubungi Kasir Outlet").assertDoesNotExist()
         compose.onNodeWithTag("back").performClick()
         compose.onNodeWithTag("filter_COMPLETED").performClick()
-        compose.onNodeWithTag("order_MW-1001").assertDoesNotExist()
-        compose.onNodeWithTag("order_MW-1003").performClick()
-        compose.onNodeWithTag("detail_id").assertTextEquals("#MW-1003")
+        compose.onNodeWithTag("order_$activeOrderId").assertDoesNotExist()
+        compose.onNodeWithTag("order_$completedOrderId").performClick()
+        compose.onNodeWithTag("detail_id").assertTextEquals("#$completedOrderId")
         compose.onNodeWithTag("detail_status").assertTextEquals("Sudah Diambil")
         compose.onNodeWithTag("back").performClick()
-        compose.onNodeWithTag("order_MW-1003").assertExists()
+        compose.onNodeWithTag("order_$completedOrderId").assertExists()
     }
     @Test fun registerValidatesAndUpdatesCustomerAcrossScreens() {
         awaitLogin(); compose.onNodeWithTag("open_register").performClick(); capture("register")
@@ -89,26 +129,35 @@ class MaxwashFlowTest {
         compose.onNodeWithTag("nav_profile").performClick()
         compose.onNodeWithTag("profile_name").assertTextEquals("Budi Santoso")
     }
-    @Test fun locationSelectionRefreshAndDirectionAreLocal() {
-        demo(); compose.onNodeWithText("Lokasi", useUnmergedTree = true).performScrollTo().performClick(); capture("laundry-location")
+    @Test fun locationSelectionAndDirectionOpenMaps() {
+        login(); compose.onNodeWithText("Lokasi", useUnmergedTree = true).performScrollTo().performClick(); capture("laundry-location")
         compose.onNodeWithTag("outlet_OUT-002").performScrollTo().performClick()
         awaitText("MAXWASH Senopati")
         compose.onNodeWithTag("location_outlet").assertTextEquals("MAXWASH Senopati")
-        compose.onNodeWithTag("refresh_location").performScrollTo().performClick()
-        compose.onNodeWithTag("location_distance").assertTextContains("2.5 km", substring = true)
-        awaitFeedbackGone("Data outlet lokal dimuat ulang")
-        compose.onNodeWithTag("direction").performScrollTo().performClick()
-        compose.waitUntil(10_000) { runCatching { compose.onNodeWithText("Petunjuk Arah Demo").assertIsDisplayed() }.isSuccess }
-        captureNative("direction-dialog")
-        compose.onNodeWithTag("direction_close").performClick()
+        compose.onNodeWithTag("location_distance").assertDoesNotExist()
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val filter = IntentFilter(Intent.ACTION_VIEW).apply {
+            addDataScheme("https")
+            addDataAuthority("www.google.com", null)
+            addDataPath("/maps/dir/", PatternMatcher.PATTERN_LITERAL)
+        }
+        val monitor = instrumentation.addMonitor(filter, Instrumentation.ActivityResult(Activity.RESULT_OK, null), true)
+        try {
+            compose.onNodeWithTag("direction").performScrollTo().performClick()
+            compose.waitForIdle()
+            org.junit.Assert.assertEquals(1, monitor.hits)
+            compose.onNodeWithText("Petunjuk Arah Demo").assertDoesNotExist()
+        } finally { instrumentation.removeMonitor(monitor) }
     }
-    @Test fun profileEditsQrAndLogout() {
-        demo(); compose.onNodeWithTag("nav_profile").performClick(); capture("profile-qr")
+    @Test fun profileEditsPreferencesAndLogoutWithoutQrDemo() {
+        login(); compose.onNodeWithTag("nav_profile").performClick(); capture("profile")
+        compose.onNodeWithTag("open_qr").assertDoesNotExist()
+        compose.onNodeWithTag("customer_qr").assertDoesNotExist()
         compose.onNodeWithTag("edit_profile").performClick()
-        compose.onNodeWithTag("edit_name").performTextReplacement("Andi Wijaya")
+        compose.onNodeWithTag("edit_name").performTextReplacement("Customer Wijaya")
         closeSoftKeyboard(); compose.onNodeWithTag("edit_save").performClick()
-        awaitText("Andi Wijaya")
-        compose.onNodeWithTag("profile_name").assertTextEquals("Andi Wijaya")
+        awaitText("Customer Wijaya")
+        compose.onNodeWithTag("profile_name").assertTextEquals("Customer Wijaya")
         awaitFeedbackGone("Data diri diperbarui")
         compose.onNodeWithTag("profile_fragrance").performScrollTo().performClick()
         compose.onNodeWithText("Ocean Breeze").performClick()
@@ -116,24 +165,20 @@ class MaxwashFlowTest {
         compose.onNodeWithTag("profile_notifications").assertIsOff()
         compose.onNodeWithTag("save_preferences").performScrollTo().performClick()
         awaitFeedbackGone("Perubahan profil disimpan"); capture("profile-preferences")
-        compose.onNodeWithTag("open_qr").performScrollTo().performClick()
-        compose.waitUntil(10_000) { runCatching { compose.onNodeWithTag("close_qr").assertIsDisplayed() }.isSuccess }
-        captureNative("qr-dialog")
-        compose.onNodeWithTag("close_qr").assertIsDisplayed().performClick()
         compose.onNodeWithTag("nav_home").performClick()
-        compose.onNodeWithTag("home_greeting").assertTextContains("Andi", substring = true)
+        compose.onNodeWithTag("home_greeting").assertTextContains("Customer", substring = true)
         compose.onNodeWithTag("nav_profile").performClick()
         compose.onNodeWithTag("profile_notifications").performScrollTo().assertIsOff()
         compose.onNodeWithTag("profile_fragrance").performScrollTo().assertTextContains("Ocean Breeze", substring = true)
         compose.onNodeWithTag("logout").performScrollTo().performClick()
         awaitLogin()
-        compose.onNodeWithTag("demo_login").assertExists()
+        compose.onNodeWithTag("demo_login").assertDoesNotExist()
         compose.onNodeWithTag("nav_home").assertDoesNotExist()
     }
     @Test fun notificationsOpenTheirOwnOrderAndRetainReadState() {
-        demo(); compose.onNodeWithTag("nav_notifications").performClick(); capture("notifications")
-        compose.onNodeWithTag("notification_N-001").performClick()
-        compose.onNodeWithTag("detail_id").assertTextEquals("#MW-1002")
+        login(); compose.onNodeWithTag("nav_notifications").performClick(); capture("notifications")
+        compose.onNodeWithTag("notification_$activeNotificationId").performClick()
+        compose.onNodeWithTag("detail_id").assertTextEquals("#$activeOrderId")
         compose.onNodeWithTag("back").performClick()
         awaitText("1 Baru")
         compose.onNodeWithText("1 Baru").assertExists()
@@ -144,11 +189,11 @@ class MaxwashFlowTest {
         compose.onNodeWithTag("notifications_empty").assertExists()
     }
     @Test fun stateSurvivesActivityRecreationAndEmptySearch() {
-        demo(); compose.onNodeWithTag("nav_orders").performClick()
+        login(); compose.onNodeWithTag("nav_orders").performClick()
         compose.onNodeWithTag("filter_COMPLETED").performClick()
         compose.activityRule.scenario.recreate(); compose.waitForIdle()
-        compose.onNodeWithTag("order_MW-1003").assertExists()
-        compose.onNodeWithTag("order_MW-1001").assertDoesNotExist()
+        compose.onNodeWithTag("order_$completedOrderId").assertExists()
+        compose.onNodeWithTag("order_$activeOrderId").assertDoesNotExist()
         compose.onNodeWithTag("order_search").performTextInput("does-not-exist")
         compose.onNodeWithTag("orders_empty").assertExists()
     }
@@ -166,7 +211,7 @@ class MaxwashFlowTest {
         awaitTag("home_greeting")
         compose.onNodeWithTag("home_orders_empty").assertExists()
         compose.onNodeWithTag("nav_orders").performClick()
-        compose.onNodeWithTag("order_MW-1001").assertDoesNotExist()
+        compose.onNodeWithTag("order_$activeOrderId").assertDoesNotExist()
         compose.onNodeWithTag("add_order").performClick()
         input("new_order_weight", "2.5")
         closeSoftKeyboard()
@@ -177,7 +222,7 @@ class MaxwashFlowTest {
         compose.waitForIdle()
         compose.onNodeWithTag("detail_status").assertTextEquals("Pesanan Diterima")
         compose.onNodeWithTag("back").performClick()
-        compose.onNodeWithTag("order_MW-1001").assertDoesNotExist()
+        compose.onNodeWithTag("order_$activeOrderId").assertDoesNotExist()
         compose.onNodeWithText("Rp 17.500").assertExists()
     }
 }

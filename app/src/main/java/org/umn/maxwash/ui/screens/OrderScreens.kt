@@ -152,7 +152,7 @@ private fun NewOrderDialog(vm: MaxwashViewModel, onDismiss: () -> Unit, onSaved:
 }
 
 @Composable
-fun OrderDetailsScreen(vm: MaxwashViewModel, orderId: String?, onLocation: () -> Unit, feedback: (String) -> Unit) {
+fun OrderDetailsScreen(vm: MaxwashViewModel, orderId: String?, onLocation: () -> Unit) {
     val order = vm.order(orderId)
     if (order == null) {
         EmptyState("Pesanan tidak ditemukan", "ID ${orderId ?: "kosong"} tidak tersedia. Silakan kembali ke daftar pesanan.", Modifier.testTag("order_missing")); return
@@ -226,9 +226,6 @@ fun OrderDetailsScreen(vm: MaxwashViewModel, orderId: String?, onLocation: () ->
                     }
                 }
             }
-        }
-        FilledTonalButton({ feedback("Menghubungi kasir adalah fitur demo. Tidak ada pesan yang dikirim.") }, Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small) {
-            Icon(Icons.Outlined.ChatBubbleOutline, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Hubungi Kasir Outlet")
         }
     }
 }

@@ -32,7 +32,6 @@ fun ProfileScreen(vm: MaxwashViewModel, onLogout: () -> Unit, onLocation: () -> 
     val scope = rememberCoroutineScope()
     var saving by remember { mutableStateOf(false) }
     var editing by rememberSaveable { mutableStateOf(false) }
-    var qrDialog by rememberSaveable { mutableStateOf(false) }
     var fragrance by rememberSaveable(customer.id) { mutableStateOf(customer.fragrance) }
     var notes by rememberSaveable(customer.id) { mutableStateOf(customer.notes) }
     var notifications by rememberSaveable(customer.id) { mutableStateOf(customer.notificationEnabled) }
@@ -58,17 +57,6 @@ fun ProfileScreen(vm: MaxwashViewModel, onLogout: () -> Unit, onLocation: () -> 
             ProfileRow(Icons.Outlined.Email, "Email", customer.email)
             HorizontalDivider(color = WashBorder)
             ProfileRow(Icons.Outlined.LocationOn, "Alamat", customer.address.ifBlank { "Belum diisi" })
-        }
-        WashCard(Modifier.clickable { qrDialog = true }) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                MockQr(customer.id, Modifier.size(96.dp))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("QR Pelanggan", style = MaterialTheme.typography.titleMedium)
-                    Text(customer.id, style = MaterialTheme.typography.labelLarge, color = WashTeal)
-                    Text("Tunjukkan identitas Anda di outlet.", style = MaterialTheme.typography.bodySmall, color = WashMuted)
-                    TextButton({ qrDialog = true }, Modifier.testTag("open_qr")) { Text("Perbesar QR") }
-                }
-            }
         }
         SectionLabel("PREFERENSI LAYANAN")
         WashCard {
@@ -128,7 +116,7 @@ fun ProfileScreen(vm: MaxwashViewModel, onLogout: () -> Unit, onLocation: () -> 
         TextButton(onLogout, Modifier.align(Alignment.CenterHorizontally).testTag("logout"), colors = ButtonDefaults.textButtonColors(contentColor = WashError)) {
             Icon(Icons.AutoMirrored.Outlined.Logout, null, Modifier.size(18.dp)); Text(" Keluar dari Akun")
         }
-        Text("MAXWASH CUSTOMER · UTS PROTOTYPE", Modifier.fillMaxWidth(), style = MaterialTheme.typography.labelSmall, color = WashMuted, textAlign = TextAlign.Center)
+        Text("MAXWASH CUSTOMER", Modifier.fillMaxWidth(), style = MaterialTheme.typography.labelSmall, color = WashMuted, textAlign = TextAlign.Center)
     }
     if (editing) EditProfileDialog(customer, { editing = false }) {
         if (!saving) {
@@ -139,11 +127,6 @@ fun ProfileScreen(vm: MaxwashViewModel, onLogout: () -> Unit, onLocation: () -> 
             }
         }
     }
-    if (qrDialog) AlertDialog(onDismissRequest = { qrDialog = false }, title = { Text("QR Pelanggan") },
-        text = { Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            MockQr(customer.id, Modifier.size(220.dp)); Text(customer.name); Text(customer.id, color = WashTeal)
-            Text("Identitas visual untuk demo; belum digunakan untuk pemindaian.", style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
-        } }, confirmButton = { TextButton({ qrDialog = false }, Modifier.testTag("close_qr")) { Text("Tutup") } })
 }
 
 @Composable

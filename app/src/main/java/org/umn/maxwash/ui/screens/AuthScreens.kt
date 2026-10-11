@@ -69,13 +69,6 @@ fun LoginScreen(vm: MaxwashViewModel, onSuccess: () -> Unit, onRegister: () -> U
             Text("Belum memiliki akun?", style = MaterialTheme.typography.bodySmall)
             TextButton(onRegister, modifier = Modifier.testTag("open_register")) { Text("Daftar Akun Baru") }
         }
-        OutlinedButton({
-            busy = true
-            scope.launch(Dispatchers.Main.immediate) {
-                if (vm.loginDemo()) onSuccess() else loginError = vm.errorMessage
-                busy = false
-            }
-        }, Modifier.fillMaxWidth().testTag("demo_login"), enabled = !busy, shape = MaterialTheme.shapes.extraLarge) { Text("Coba akun demo") }
         Text("Laundry lebih bersih, hemat air, dan higienis.", Modifier.fillMaxWidth(), color = WashMuted,
             style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
     }

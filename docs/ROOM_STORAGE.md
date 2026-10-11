@@ -16,9 +16,9 @@ Implementasi pada 10 Oktober 2026 mengganti `MockRepository` dengan Room 2.8.5 d
 | services | Nama layanan, tarif per kilogram dan durasi |
 | fragrances / promotions | Pilihan parfum dan informasi promo |
 | app_session | Akun aktif dan outlet yang dipilih |
-| metadata | Penanda bootstrap dan ID akun demo |
+| metadata | Penanda bootstrap katalog |
 
-Foreign key dan indeks menjaga relasi customer–order–notifikasi serta outlet/layanan. Email dinormalisasi ke lowercase; email dan nomor HP memiliki unique index. Query notifikasi dibatasi ke pesanan akun aktif. Akun baru mendapatkan ID sendiri, tanpa pesanan atau notifikasi milik akun demo.
+Foreign key dan indeks menjaga relasi customer–order–notifikasi serta outlet/layanan. Email dinormalisasi ke lowercase; email dan nomor HP memiliki unique index. Query notifikasi dibatasi ke pesanan akun aktif. Akun hanya dibuat melalui registrasi, dengan ID sendiri dan daftar pesanan/notifikasi kosong.
 
 `Catat Pesanan` mengambil tarif dan durasi dari Room, memvalidasi berat, menghitung total, lalu menyimpan pesanan, event awal dan notifikasi dalam satu transaksi. Ini pencatatan lokal; belum mengirim pesanan ke outlet. Status selanjutnya tetap data tracking tersimpan, tanpa simulasi perubahan status otomatis.
 
@@ -26,19 +26,33 @@ Home dan list menghitung jumlah pesanan, berat dan jumlah aktif dari data akun. 
 
 ## Bootstrap dan persistensi
 
-`app/src/main/assets/demo_data.json` berisi data awal untuk demo dan katalog. Repository mengimpornya **satu kali**, bersama penanda `metadata.initialized`, dalam transaksi. Sesudah itu layar hanya membaca Room. Membuka aplikasi atau tombol akun demo tidak mengisi ulang maupun mereset data yang sudah diedit. Asset hanya menjadi sumber bootstrap; mengeditnya setelah database dibuat tidak mengubah database pengguna.
+`app/src/main/assets/catalog_data.json` hanya berisi outlet, layanan, parfum dan promo. Repository mengimpornya **satu kali**, bersama penanda `metadata.initialized`, dalam transaksi. Tidak ada akun, pesanan, riwayat atau notifikasi bawaan. Sesudah itu layar hanya membaca Room. Asset hanya menjadi sumber bootstrap; mengeditnya setelah database dibuat tidak mengubah database pengguna.
 
-Registrasi mendukung beberapa akun pada satu perangkat. Password akun disimpan sebagai PBKDF2-HMAC-SHA256, 120.000 iterasi, salt acak 16 byte dan hash 256 bit. Password demo yang diketahui publik hanya ada di asset bootstrap; password pengguna tidak disimpan sebagai plaintext.
+Pembaruan 11 Oktober 2026 menghapus login demo dan data akun demo versi lama saat `initialize()`. ID dibaca dari metadata lama `demoCustomerId`, sehingga perubahan nama/email akun lama tidak menghindari pembersihan. Penghapusan customer menggunakan foreign key CASCADE untuk menghapus pesanan, riwayat dan notifikasi terkait. Jika sesi aktif milik akun tersebut, sesi dikosongkan; akun registrasi lain, data dan sesi aktifnya tetap tersimpan. Metadata lama dihapus dalam transaksi yang sama. Schema tetap versi 1 karena struktur tabel tidak berubah.
+
+Registrasi mendukung beberapa akun pada satu perangkat. Password akun disimpan sebagai PBKDF2-HMAC-SHA256, 120.000 iterasi, salt acak 16 byte dan hash 256 bit. Tidak ada kredensial bawaan dalam asset; password pengguna tidak disimpan sebagai plaintext.
 
 Profil, preferensi, notifikasi dibaca, outlet pilihan, pesanan dan sesi bertahan setelah database/proses dibuka ulang. Logout mengosongkan sesi dan back stack, tanpa menghapus akun. Data prototype lama hanya berada di memori sehingga tidak ada database lama yang bisa dikonversi; perubahan sesi lama tidak dapat dipulihkan setelah proses berhenti.
 
 Database mulai pada schema versi 1. Schema hasil KSP disimpan di `app/schemas/org.umn.maxwash.data.local.MaxwashDatabase/1.json`. Tidak memakai destructive migration atau akses database di main thread. Perubahan schema berikutnya perlu menaikkan versi dan menambahkan migration yang mempertahankan data.
 
-Peta dan QR masih ilustrasi; jarak outlet berasal dari data contoh, bukan GPS. Belum ada backend, sinkronisasi, push notification atau transaksi pembayaran. UI copy, warna, ikon dan enum tahapan merupakan definisi aplikasi, sedangkan isi akun/katalog/transaksi disimpan di Room.
+QR tiruan, peta ilustrasi, jarak/estimasi perjalanan simulasi, tombol refresh tanpa perubahan data dan tombol kontak demo dihapus. Layar lokasi menampilkan alamat serta jam outlet tersimpan; petunjuk arah membuka URL Google Maps melalui ACTION_VIEW. Belum ada backend, sinkronisasi, push notification atau transaksi pembayaran. UI copy, warna, ikon dan enum tahapan merupakan definisi aplikasi, sedangkan isi akun/katalog/transaksi disimpan di Room.
 
 ## Verifikasi
 
-Hasil nyata pada 10 Oktober 2026, Windows/JBR 25/SDK 37 dan emulator Pixel 10 Pro XL Android 17:
+Hasil terbaru pada 11 Oktober 2026 setelah penghapusan demo:
+
+- APK debug, APK tes, unit test dan lint: **BUILD SUCCESSFUL** dalam **1 menit 27 detik**, 85 task. Command: `:app:assembleDebug :app:testDebugUnitTest :app:assembleDebugAndroidTest :app:lintDebug --max-workers=1 --console=plain --no-daemon`.
+- Unit: **10 tes, 0 kegagalan, 0 error**.
+- Emulator Pixel 10 Pro XL, APK akhir dipasang ulang tanpa menghapus data aplikasi: **OK (17 tests)** dalam **85,355 detik**, terdiri dari **8 UI + 9 repository**. Log: [verification/account-cleanup-instrumentation.txt](verification/account-cleanup-instrumentation.txt).
+- Regression mencakup bootstrap tanpa akun/transaksi bawaan, penghapusan akun lama setelah profilnya diubah, CASCADE pesanan/riwayat/notifikasi, reset sesi akun lama, preservasi akun registrasi/data/sesi aktif, metadata lama tanpa customer, serta inisialisasi berulang.
+- UI login hanya menawarkan autentikasi biasa dan registrasi. Profil tidak memuat QR tiruan; detail tidak memuat kontak demo. Tes petunjuk arah memeriksa ACTION_VIEW ke URL peta dengan activity monitor, tanpa membuka aplikasi eksternal selama tes.
+- Lint: **0 error / 13 warning** (label Activity, versi dependensi, resource warna template, saran ekstensi KTX untuk Uri). Tidak ada rule yang disembunyikan.
+- Isi APK diperiksa: hanya `assets/catalog_data.json`; tidak memuat asset data demo, kredensial demo, tombol demo, loader seed lama atau peta tiruan. Screenshot Login, Profil dan Lokasi diperiksa di `output/screenshots/account-cleanup/`.
+
+Percobaan emulator awal meluluskan 8 tes UI, tetapi JUnit menolak setup repository yang tidak mengembalikan void. Return type `initialize()` ditegaskan sebagai `Unit`; build dan seluruh 17 tes di atas dijalankan kembali setelah perbaikan.
+
+Riwayat hasil pada 10 Oktober 2026 sebelum penghapusan demo, Windows/JBR 25/SDK 37 dan emulator Pixel 10 Pro XL Android 17:
 
 - APK debug dan APK tes: **BUILD SUCCESSFUL**. Build akhir + lint selesai dalam 1 menit 29 detik.
 - Unit: **10 tests, 0 failures, 0 errors**, mencakup validasi form, filter/pencarian, progress, hash password dan batas bulan WIB. Laporan: `app/build/reports/tests/testDebugUnitTest/index.html`.

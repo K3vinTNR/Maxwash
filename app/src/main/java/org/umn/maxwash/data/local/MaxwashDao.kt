@@ -10,6 +10,12 @@ interface MaxwashDao {
     @Query("SELECT value FROM metadata WHERE `key` = :key")
     suspend fun metadata(key: String): String?
 
+    @Query("DELETE FROM metadata WHERE `key` = :key")
+    suspend fun deleteMetadata(key: String)
+
+    @Query("DELETE FROM customers WHERE id = :id")
+    suspend fun deleteCustomer(id: String)
+
     @Transaction
     @Query("SELECT * FROM customers WHERE id = :id")
     suspend fun customerWithOrders(id: String): CustomerWithOrders?

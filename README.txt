@@ -1,13 +1,14 @@
 MAXWASH - Aplikasi laundry lokal (Room) / UTS IF570L
-Tanggal pengerjaan: 10 Oktober 2026
+Tanggal pembaruan: 11 Oktober 2026
 
 DESKRIPSI
 Aplikasi pelanggan laundry Android menggunakan Kotlin dan Jetpack Compose.
-Menampilkan profil/QR visual, pesanan, enam tahapan status, notifikasi lokal,
-registrasi/login lokal, pencatatan pesanan, dan peta lokasi outlet simulasi.
+Menampilkan profil, pesanan, enam tahapan status, notifikasi lokal,
+registrasi/login lokal, pencatatan pesanan, dan informasi lokasi outlet.
 Menggunakan database Room/SQLite di perangkat. Akun, profil, preferensi, pesanan,
 timeline, outlet, katalog tarif/parfum/promo, notifikasi dan sesi tersimpan lokal.
-Peta/QR tetap ilustratif; tidak menggunakan backend, GPS, push atau pembayaran.
+Petunjuk arah membuka aplikasi peta/browser. Belum menggunakan backend, push
+atau pembayaran. Tidak ada akun bawaan atau halaman demo.
 
 ANGGOTA (sesuai teks proposal; nama lengkap belum seluruhnya dikonfirmasi)
 1. Michael - 00000106013
@@ -27,27 +28,28 @@ LAYAR DAN RUBRIK
 - List: My Orders/Pesanan Saya dan Riwayat; LazyColumn, search, filter.
 - Detail: Order Tracking; argument orders/{orderId} memilih data akun aktif di Room.
 - Form: Register; nama, HP numerik, email, password, konfirmasi, error langsung.
-- Lokasi: daftar outlet dan jarak dari Room; peta ilustrasi, tanpa GPS.
-- Free choice: Profile & QR; edit lokal, preferensi, QR dialog, logout.
+- Lokasi: daftar outlet/alamat dari Room; petunjuk arah membuka peta/browser.
+- Free choice: Profil; edit lokal, preferensi, logout.
 - Tambahan: Splash, Login, Home, Notifications dengan read/unread state.
 - Custom Material 3: Color.kt, Type.kt, Theme.kt mendefinisikan warna/tipografi/shapes.
 - State: ViewModel bersama; rememberSaveable untuk form, dialog, preferensi UI.
 - Data: Entity + DAO + MaxwashDatabase + RoomRepository, Flow dan coroutine.
-  Seed demo_data.json diimpor satu kali: 6 pesanan, 5 notifikasi, 2 outlet,
-  katalog layanan/parfum/promo. UI membaca database, bukan asset atau list statis.
+  catalog_data.json diimpor satu kali: 2 outlet dan katalog layanan/parfum/promo.
+  Tidak membuat akun, pesanan, riwayat atau notifikasi contoh.
+  UI membaca database, bukan asset atau list statis.
 - Catat Pesanan: pilih layanan/outlet/berat; biaya dihitung dari tarif Room.
   Pesanan, event awal dan notifikasi dibuat dalam satu transaksi.
 - Statistik Home/list dihitung dari pesanan akun aktif, termasuk bulan berjalan.
 
-AKUN DEMO
-Email: andi@example.com
-Nomor HP: 081234567890
-Password: Maxwash123
-Tombol "Coba akun demo" tersedia. Registrasi membuat akun lokal terpisah dan
-langsung membuka Home dengan pesanan/notifikasi kosong. Email dan HP unik.
+AKUN PELANGGAN
+Daftar akun melalui halaman Registrasi, lalu masuk memakai email/nomor HP
+dan password yang didaftarkan. Akun baru membuka Home dengan daftar
+pesanan/notifikasi kosong. Email dan HP unik.
 Password akun disimpan sebagai hash PBKDF2 dengan salt acak, bukan plaintext.
 Akun/profil/sesi bertahan setelah aplikasi ditutup atau proses dimulai ulang.
-Login demo membuka akun demo tersimpan tanpa mereset profil atau status dibaca.
+Saat versi baru dibuka, akun demo versi lama dihapus berdasarkan metadata ID,
+beserta pesanan/riwayat/notifikasinya. Sesi akun demo dikosongkan. Akun yang
+dibuat lewat registrasi beserta data dan sesi aktifnya tetap tersimpan.
 Logout hanya menghapus sesi; akun dan data tetap tersimpan. Menghapus data app
 atau uninstall menghapus database lokal. Belum ada sinkronisasi antar perangkat.
 
@@ -65,9 +67,11 @@ adb shell am instrument -w -r org.umn.maxwash.test/org.umn.maxwash.MaxwashTestRu
 APK: app/build/outputs/apk/debug/app-debug.apk
 Laporan unit: app/build/reports/tests/testDebugUnitTest/index.html
 Laporan connected hanya ada bila connectedDebugAndroidTest benar-benar dijalankan.
-Status/hasil runner ADB dicatat di docs/VERIFICATION.md; bukan laporan connected Gradle.
-Migrasi Room: build sukses, 10 unit test dan 13 tes emulator lulus; lint 0 error
-/ 12 warning. Penjelasan arsitektur dan batas pengujian: docs/ROOM_STORAGE.md.
+Hasil terkini dan runner ADB dicatat di docs/ROOM_STORAGE.md; bukan laporan
+connected Gradle. Pembaruan 11 Oktober 2026: build sukses, 10 unit test dan
+17 tes emulator lulus (8 UI + 9 repository); lint 0 error / 13 warning.
+Log emulator: docs/verification/account-cleanup-instrumentation.txt.
+Penjelasan arsitektur dan batas pengujian: docs/ROOM_STORAGE.md.
 docs/VERIFICATION.md mencatat pengujian prototipe sebelumnya.
 UI tests menggunakan database in-memory terpisah; tes repository menggunakan
 database sementara yang dibuka ulang, tanpa menghapus data akun aplikasi.
@@ -75,14 +79,14 @@ database sementara yang dibuka ulang, tanpa menghapus data akun aplikasi.
 ACUAN DAN ADAPTASI
 Analisis ketiga PDF, daftar persyaratan, konflik dan rencana bertahap:
 docs/REQUIREMENTS.md.
-Login/QR/Register/Location/timeline memerlukan adaptasi PRD dari screenshot
+Login/Register/Location/timeline memerlukan adaptasi PRD dari screenshot
 proposal. Selisih visual akhir dicatat di docs/VISUAL_REVIEW.md.
 Screenshot acuan berasal dari PDF; font/vektor/aset Figma asli tidak tersedia.
 
 SUBMISSION
 Instruksi UTS mensyaratkan source project, APK, README dengan nama lengkap dan
 kontribusi nyata, video demo <=5 menit, dan ZIP [GroupName]_MAXWASH.zip.
-Panduan demo: docs/DEMO.md. Nama/kontribusi belum lengkap; jangan mengklaim
+Panduan penggunaan: docs/WALKTHROUGH.md. Nama/kontribusi belum lengkap; jangan mengklaim
 submission lengkap sebelum semua berkas dan informasi tersebut tersedia.
 Paket persiapan: output/uts/MAXWASH_DRAFT.zip. Source berada dalam
 MAXWASH/AndroidStudioProject, APK dalam MAXWASH/APK, bukti dalam

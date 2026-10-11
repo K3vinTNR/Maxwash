@@ -36,7 +36,7 @@ class RoomRepositoryTest {
 
     private fun openDatabase() {
         database = Room.databaseBuilder(context, MaxwashDatabase::class.java, databaseName).build()
-        repository = RoomRepository(database, SeedData(context))
+        repository = RoomRepository(database, CatalogData(context))
     }
 
     private suspend fun reopen() {
@@ -45,28 +45,81 @@ class RoomRepositoryTest {
         repository.initialize()
     }
 
+    private suspend fun registerBudi() {
+        repository.register("Budi Santoso", "081234567891", "budi@example.com", "BudiPass123", "BudiPass123")
+    }
+
     private suspend fun expectInvalid(action: suspend () -> Unit) {
         try { action(); fail("Expected validation failure") } catch (_: IllegalArgumentException) { }
     }
 
-    @Test fun seedIsImportedOnceAndHasConsistentRelations() = runBlocking {
-        assertNull(repository.readData().customer)
-        repository.loginDemo()
+    private fun rowCount(table: String): Int = database.openHelper.readableDatabase.query("SELECT COUNT(*) FROM $table").use {
+        it.moveToFirst()
+        it.getInt(0)
+    }
+
+    @Test fun bootstrapImportsOnlyCatalogAndNeverCreatesAccountsOrOrders() = runBlocking {
         val initial = repository.readData()
-        assertEquals(6, initial.orders.size)
-        assertEquals(5, initial.notifications.size)
-        assertEquals(2, initial.notifications.count { !it.isRead })
-        assertEquals(LaundryStatus.entries.toSet(), initial.orders.map { it.status }.toSet())
-        initial.orders.forEach {
-            assertEquals(it.status, it.history.last().status)
-            assertEquals(LaundryStatus.entries.take(it.status.ordinal + 1), it.history.map { event -> event.status })
-            assertTrue(initial.outlets.any { outlet -> outlet.id == it.outletId })
-        }
-        initial.notifications.forEach { assertTrue(initial.orders.any { order -> order.id == it.orderId }) }
-        repository.markAllRead()
+        assertNull(initial.customer)
+        assertTrue(initial.orders.isEmpty())
+        assertTrue(initial.notifications.isEmpty())
+        assertEquals(2, initial.outlets.size)
+        assertEquals(4, initial.services.size)
+        assertEquals(3, initial.fragrances.size)
+        listOf("customers", "orders", "status_events", "notifications").forEach { assertEquals(0, rowCount(it)) }
+        assertNull(database.dao().metadata("demoCustomerId"))
+        assertFalse(repository.login("andi@example.com", "Maxwash123"))
+        database.dao().saveServices(listOf(ServiceEntity("SVC-001", "Updated service", 9000, 48)))
+        reopen()
+        assertEquals(9000, repository.readData().services.single { it.id == "SVC-001" }.pricePerKg)
+        assertEquals(0, rowCount("customers"))
+    }
+
+    @Test fun legacyAccountIsRemovedWithItsOrdersAndSessionAfterProfileEdits() = runBlocking {
+        registerBudi()
+        val legacy = repository.readData().customer!!
+        repository.createOrder("SVC-001", 2.0, "OUT-001")
+        database.dao().insertMetadata(MetadataEntity("demoCustomerId", legacy.id))
+        repository.updateProfile(legacy.copy(name = "Changed Name", email = "changed@example.com"))
+        reopen()
+        assertNull(repository.readData().customer)
+        assertNull(database.dao().customer(legacy.id))
+        assertEquals(SessionEntity(), database.dao().session())
+        assertNull(database.dao().metadata("demoCustomerId"))
+        listOf("customers", "orders", "status_events", "notifications").forEach { assertEquals(0, rowCount(it)) }
+        assertFalse(repository.login("changed@example.com", "BudiPass123"))
         repository.initialize()
-        assertEquals(6, repository.readData().orders.size)
-        assertTrue(repository.readData().notifications.all { it.isRead })
+        assertEquals(0, rowCount("customers"))
+    }
+
+    @Test fun removingLegacyAccountPreservesRegisteredAccountDataAndActiveSession() = runBlocking {
+        repository.register("Legacy Customer", "081234567890", "legacy@example.com", "LegacyPass123", "LegacyPass123")
+        val legacyId = repository.readData().customer!!.id
+        repository.createOrder("SVC-001", 1.0, "OUT-001")
+        database.dao().insertMetadata(MetadataEntity("demoCustomerId", legacyId))
+        registerBudi()
+        repository.createOrder("SVC-002", 3.0, "OUT-002")
+        repository.selectOutlet("OUT-002")
+        val realData = repository.readData()
+        val realSession = database.dao().session()
+        reopen()
+        assertEquals(realData, repository.readData())
+        assertEquals(realSession, database.dao().session())
+        assertNull(database.dao().customer(legacyId))
+        assertNull(database.dao().metadata("demoCustomerId"))
+        listOf("customers", "orders", "status_events", "notifications").forEach { assertEquals(1, rowCount(it)) }
+        repository.logout()
+        assertTrue(repository.login("budi@example.com", "BudiPass123"))
+        assertEquals(realData.customer, repository.readData().customer)
+    }
+
+    @Test fun staleLegacyMetadataIsRemovedWithoutChangingRegisteredSession() = runBlocking {
+        registerBudi()
+        val initial = repository.readData()
+        database.dao().insertMetadata(MetadataEntity("demoCustomerId", "missing-account"))
+        reopen()
+        assertEquals(initial, repository.readData())
+        assertNull(database.dao().metadata("demoCustomerId"))
     }
 
     @Test fun registrationCredentialsAndSessionSurviveDatabaseReopen() = runBlocking {
@@ -88,74 +141,74 @@ class RoomRepositoryTest {
         assertTrue(repository.login("BUDI@example.com", "BudiPass123"))
     }
 
-    @Test fun profilePreferencesOutletAndReadStateSurviveReopenAndDemoLogin() = runBlocking {
-        repository.loginDemo()
-        val customer = repository.readData().customer!!
-        val updated = customer.copy(name = "Andi Wijaya", email = "wijaya@example.com", fragrance = "Ocean Breeze",
+    @Test fun profilePreferencesOutletAndReadStateSurviveReopenAndLogin() = runBlocking {
+        registerBudi()
+        repository.createOrder("SVC-001", 2.0, "OUT-001")
+        repository.createOrder("SVC-002", 1.0, "OUT-002")
+        val initial = repository.readData()
+        val updated = initial.customer!!.copy(name = "Budi Wijaya", email = "wijaya@example.com", fragrance = "Ocean Breeze",
             notes = "Pisahkan pakaian putih", notificationEnabled = false, outletId = "OUT-002")
         repository.updateProfile(updated)
-        repository.markRead("N-001")
-        repository.markRead("N-001")
+        repository.markRead(initial.notifications.first().id)
+        repository.markRead(initial.notifications.first().id)
         repository.selectOutlet("OUT-001")
         reopen()
         assertEquals(updated, repository.readData().customer)
         assertEquals("OUT-001", repository.readData().selectedOutletId)
         assertEquals(1, repository.readData().notifications.count { !it.isRead })
         repository.logout()
-        assertFalse(repository.login("andi@example.com", "Maxwash123"))
-        assertTrue(repository.login("wijaya@example.com", "Maxwash123"))
-        repository.logout()
-        repository.loginDemo()
+        assertFalse(repository.login("budi@example.com", "BudiPass123"))
+        assertTrue(repository.login("wijaya@example.com", "BudiPass123"))
         assertEquals(updated, repository.readData().customer)
-        assertEquals(6, repository.readData().orders.size)
+        assertEquals(2, repository.readData().orders.size)
         assertEquals(1, repository.readData().notifications.count { !it.isRead })
     }
 
     @Test fun multipleAccountsCannotReadOrMarkEachOthersOrdersAndNotifications() = runBlocking {
-        repository.register("Budi Santoso", "081234567891", "budi@example.com", "BudiPass123", "BudiPass123")
+        registerBudi()
         val budi = repository.readData().customer!!
-        val id = repository.createOrder("SVC-001", 2.5, "OUT-002")
-        repository.markRead("N-001")
-        val order = repository.readData().orders.single()
-        assertEquals(id, order.id)
-        assertEquals(17500, order.total)
-        assertEquals(LaundryStatus.RECEIVED, order.status)
-        assertEquals(1, order.history.size)
-        assertEquals(id, repository.readData().notifications.single().orderId)
-        repository.logout()
-        repository.loginDemo()
-        assertEquals(6, repository.readData().orders.size)
-        assertTrue(repository.readData().orders.none { it.id == id })
-        assertFalse(repository.readData().notifications.single { it.id == "N-001" }.isRead)
+        val budiOrderId = repository.createOrder("SVC-001", 2.5, "OUT-002")
+        val budiNotificationId = repository.readData().notifications.single().id
+        assertEquals(17500, repository.readData().orders.single().total)
+        assertEquals(LaundryStatus.RECEIVED, repository.readData().orders.single().status)
+        assertEquals(1, repository.readData().orders.single().history.size)
+        repository.register("Sari Utami", "081234567892", "sari@example.com", "SariPass123", "SariPass123")
+        assertTrue(repository.readData().orders.isEmpty())
+        assertTrue(repository.readData().notifications.isEmpty())
+        val sariOrderId = repository.createOrder("SVC-002", 1.0, "OUT-001")
+        repository.markRead(budiNotificationId)
         expectInvalid { repository.updateProfile(budi) }
+        assertEquals(sariOrderId, repository.readData().orders.single().id)
         reopen()
         repository.logout()
         assertTrue(repository.login("budi@example.com", "BudiPass123"))
-        assertEquals(id, repository.readData().orders.single().id)
+        assertEquals(budiOrderId, repository.readData().orders.single().id)
+        assertFalse(repository.readData().notifications.single().isRead)
         repository.markAllRead()
         reopen()
         assertTrue(repository.readData().notifications.single().isRead)
     }
 
     @Test fun duplicateIdentifiersAndInvalidOrdersDoNotChangeSavedData() = runBlocking {
-        repository.loginDemo()
+        registerBudi()
         val initial = repository.readData()
-        expectInvalid { repository.register("Other User", "081234567899", "ANDI@example.com", "OtherPass123", "OtherPass123") }
-        expectInvalid { repository.register("Other User", "081234567890", "other@example.com", "OtherPass123", "OtherPass123") }
+        expectInvalid { repository.register("Other User", "081234567899", "BUDI@example.com", "OtherPass123", "OtherPass123") }
+        expectInvalid { repository.register("Other User", "081234567891", "other@example.com", "OtherPass123", "OtherPass123") }
         listOf(0.0, -1.0, 101.0, Double.NaN, Double.POSITIVE_INFINITY).forEach { kg ->
             expectInvalid { repository.createOrder("SVC-001", kg, "OUT-001") }
         }
         expectInvalid { repository.createOrder("missing", 1.0, "OUT-001") }
         expectInvalid { repository.createOrder("SVC-001", 1.0, "missing") }
         assertEquals(initial, repository.readData())
-        repository.register("Budi Santoso", "081234567891", "budi@example.com", "BudiPass123", "BudiPass123")
-        val budi = repository.readData().customer!!
-        expectInvalid { repository.updateProfile(budi.copy(email = "ANDI@example.com")) }
-        assertEquals(budi, repository.readData().customer)
+        repository.register("Sari Utami", "081234567892", "sari@example.com", "SariPass123", "SariPass123")
+        val sari = repository.readData().customer!!
+        expectInvalid { repository.updateProfile(sari.copy(email = "BUDI@example.com")) }
+        assertEquals(sari, repository.readData().customer)
     }
 
     @Test fun databaseChangesEmitNewCatalogAndOrderDataToObservers() = runBlocking {
-        repository.loginDemo()
+        registerBudi()
+        val orderId = repository.createOrder("SVC-001", 2.0, "OUT-001")
         val ready = CompletableDeferred<Unit>()
         val observed = async {
             withTimeout(10_000) {
@@ -168,7 +221,7 @@ class RoomRepositoryTest {
         database.dao().saveServices(listOf(ServiceEntity("SVC-001", "Updated service", 9000, 48)))
         val changed = observed.await()
         assertEquals(9000, changed.services.single { it.id == "SVC-001" }.pricePerKg)
-        assertEquals(48, changed.orders.single { it.id == "MW-1001" }.turnaroundHours)
+        assertEquals(48, changed.orders.single { it.id == orderId }.turnaroundHours)
         val id = repository.createOrder("SVC-001", 2.0, "OUT-001")
         assertEquals(18000, repository.readData().orders.single { it.id == id }.total)
     }

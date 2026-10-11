@@ -1,6 +1,5 @@
 package org.umn.maxwash.ui.components
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -14,13 +13,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -148,22 +143,3 @@ fun EmptyState(title: String, message: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun SectionLabel(text: String) { Text(text, style = MaterialTheme.typography.labelMedium, color = WashMuted) }
-
-@Composable
-fun MockQr(customerId: String, modifier: Modifier = Modifier) {
-    // Identity visualization only: no encoded token or scanner is required for the UTS prototype.
-    Canvas(modifier.size(152.dp).background(Color.White).semantics { contentDescription = "QR visual pelanggan $customerId, simulasi" }.testTag("customer_qr")) {
-        val count = 29
-        val unit = size.minDimension / (count + 8)
-        fun inFinder(x: Int, y: Int): Boolean = (x < 8 && y < 8) || (x >= count - 8 && y < 8) || (x < 8 && y >= count - 8)
-        for (y in 0 until count) for (x in 0 until count) {
-            if (!inFinder(x, y) && ((x * 17 + y * 31 + x * y + customerId.hashCode()) and 3) < 2)
-                drawRect(WashNavy, Offset((x + 4) * unit, (y + 4) * unit), Size(unit, unit))
-        }
-        for ((x, y) in listOf(0 to 0, count - 7 to 0, 0 to count - 7)) {
-            drawRect(WashNavy, Offset((x + 4) * unit, (y + 4) * unit), Size(7 * unit, 7 * unit))
-            drawRect(Color.White, Offset((x + 5) * unit, (y + 5) * unit), Size(5 * unit, 5 * unit))
-            drawRect(WashNavy, Offset((x + 6) * unit, (y + 6) * unit), Size(3 * unit, 3 * unit))
-        }
-    }
-}

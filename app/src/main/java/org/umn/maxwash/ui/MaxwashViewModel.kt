@@ -66,14 +66,12 @@ class MaxwashViewModel(application: Application) : AndroidViewModel(application)
         require(repository.login(identifier, password)) { "Email/nomor HP atau password tidak cocok." }
     }
 
-    suspend fun loginDemo() = write { repository.loginDemo() }
     suspend fun updateProfile(profile: Customer) = write { repository.updateProfile(profile) }
     suspend fun logout(): Boolean = write { repository.logout() }.also {
         if (it) { filter = OrderFilter.ALL; search = "" }
     }
 
     fun selectOutlet(id: String) { viewModelScope.launch { write { repository.selectOutlet(id) } } }
-    fun refreshLocation() { viewModelScope.launch { write { /* Reload locally stored outlet data. */ } } }
     fun markRead(id: String) { viewModelScope.launch { write { repository.markRead(id) } } }
     fun markAllRead() { viewModelScope.launch { write { repository.markAllRead() } } }
 

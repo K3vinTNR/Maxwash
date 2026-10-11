@@ -1,0 +1,56 @@
+{
+  "outlets": [
+    {
+      "distanceKm": 1.2,
+      "openingHours": "08:00–21:00",
+      "address": "Jl. Kasuari No. 14, Bintaro, Tangerang Selatan",
+      "id": "OUT-001",
+      "name": "MAXWASH Bintaro Sektor 7"
+    },
+    {
+      "distanceKm": 2.5,
+      "openingHours": "08:00–21:00",
+      "address": "Jl. Senopati No. 42, Kebayoran Baru, Jakarta Selatan",
+      "id": "OUT-002",
+      "name": "MAXWASH Senopati"
+    }
+  ],
+  "services": [
+    {
+      "turnaroundHours": 24,
+      "pricePerKg": 7000,
+      "id": "SVC-001",
+      "name": "Wash & Fold"
+    },
+    {
+      "turnaroundHours": 24,
+      "pricePerKg": 10000,
+      "id": "SVC-002",
+      "name": "Wash & Iron"
+    },
+    {
+      "turnaroundHours": 4,
+      "pricePerKg": 16000,
+      "id": "SVC-003",
+      "name": "Express Laundry"
+    },
+    {
+      "turnaroundHours": 24,
+      "pricePerKg": 6000,
+      "id": "SVC-004",
+      "name": "Iron Only"
+    }
+  ],
+  "fragrances": [
+    "Lavender Fresh",
+    "Ocean Breeze",
+    "Baby Soft"
+  ],
+  "promotions": [
+    {
+      "title": "Diskon 25% Cuci Bedcover",
+      "message": "Hubungi outlet untuk informasi promo dan ketersediaan layanan.",
+      "id": "PROMO-001"
+    }
+  ]
+}

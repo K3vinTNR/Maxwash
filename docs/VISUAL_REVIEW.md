@@ -1,5 +1,7 @@
 # Perbandingan visual dengan proposal
 
+Catatan pembaruan 11 Oktober 2026: ulasan di bawah mendokumentasikan tampilan versi sebelumnya. Versi saat ini menghapus akun/login demo, QR tiruan, peta/arah simulasi dan tombol kontak demo. Profil menampilkan data serta preferensi; lokasi menampilkan outlet dan membuka petunjuk arah di peta/browser. Pesanan/notifikasi hanya berasal dari akun terdaftar.
+
 Acuan: screenshot di MAXWASH LAUNDRY.pdf, halaman 5–14. Tidak tersedia URL file Figma, token desain, font asli, atau aset terpisah. Nilai ukuran/warna diimplementasikan dari estimasi screenshot.
 
 Status: delapan layar telah dirender di emulator dan diperiksa secara visual pada 10 Oktober 2026. Screenshot ada di `output/screenshots/`; tujuh pasangan acuan/hasil ada di `output/comparison/`. Register dibandingkan dengan bahasa visual Login karena tidak memiliki screenshot khusus. Pemeriksaan ini manual, bukan pengukuran pixel-diff atau klaim pixel-perfect.

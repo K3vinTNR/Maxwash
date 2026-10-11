@@ -35,7 +35,7 @@ fun HomeScreen(vm: MaxwashViewModel, onOrder: (String) -> Unit, navigate: (Strin
                 Pill("★ ${customer.membership} · ${customer.points} Poin")
             }
             FilledTonalIconButton({ navigate("profile") }, colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color.White)) {
-                Icon(Icons.Outlined.QrCode2, "Lihat QR pelanggan", tint = WashTeal)
+                Icon(Icons.Outlined.Person, "Lihat profil pelanggan", tint = WashTeal)
             }
         }
         if (active != null) WashCard {

@@ -1,5 +1,5 @@
 package org.umn.maxwash
-// Project ini sedang dikembangkan dengan bantuan Codex
+
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity

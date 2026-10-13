@@ -44,7 +44,7 @@ Perbedaan di atas telah dilaporkan di chat sebelum keputusan implementasi ditera
 | R10 | Kotlin data classes dan mock repository; enam pesanan berbeda, notifikasi valid, dua outlet | Unit test relasi, timeline, ID/filter |
 | R11 | Responsif, scroll, inset sistem/keyboard, empty/error state | Emulator serta viewport compact/landscape/font besar jika tersedia |
 | R12 | Build APK dan tes benar-benar dijalankan; catat command/hasil | assembleDebug, testDebugUnitTest, lintDebug, connected tests jika emulator tersedia |
-| R13 | README.txt, anggota/kontribusi, source/APK, video ≤5 menit dan ZIP | Siapkan README dan skrip demo; nama lengkap/kontribusi perlu konfirmasi manusia; jangan mengarang |
+| R13 | README.md, anggota/kontribusi, source/APK, video ≤5 menit dan ZIP | Siapkan README dan skrip demo; nama lengkap/kontribusi perlu konfirmasi manusia; jangan mengarang |
 
 ## Rencana implementasi bertahap
 

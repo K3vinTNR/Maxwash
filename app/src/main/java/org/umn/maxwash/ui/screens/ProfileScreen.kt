@@ -1,20 +1,26 @@
 package org.umn.maxwash.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -36,36 +42,39 @@ fun ProfileScreen(vm: MaxwashViewModel, onLogout: () -> Unit, onLocation: () -> 
     var notes by rememberSaveable(customer.id) { mutableStateOf(customer.notes) }
     var notifications by rememberSaveable(customer.id) { mutableStateOf(customer.notificationEnabled) }
     var fragranceMenu by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(Modifier.size(84.dp).background(WashLavender, CircleShape).padding(5.dp).background(Color(0xFFC8E9EF), CircleShape), contentAlignment = Alignment.Center) {
-                Text(customer.name.split(" ").filter { it.isNotBlank() }.take(2).joinToString("") { it.take(1).uppercase() }, style = MaterialTheme.typography.headlineLarge, color = WashTeal)
+    val outlet = vm.outlet(customer.outletId)
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        ProfileIdentityCard(customer)
+        ProfileCard {
+            ProfileSectionHeader(Icons.Outlined.Badge, "Data Diri", "Informasi akun dan alamat Anda") {
+                FilledTonalButton({ editing = true }, Modifier.testTag("edit_profile"), enabled = !saving,
+                    shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(horizontal = 12.dp),
+                    colors = ButtonDefaults.filledTonalButtonColors(containerColor = WashSoftBlue, contentColor = WashTeal)) {
+                    Icon(Icons.Outlined.Edit, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text("Edit", style = MaterialTheme.typography.labelMedium)
+                }
             }
-            Text(customer.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.testTag("profile_name"))
-            Text(customer.phone, color = WashMuted)
-            Pill("★ ${customer.membership} · ${customer.points} Poin", WashTeal, WashLavender)
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            SectionLabel("DATA DIRI")
-            TextButton({ editing = true }, Modifier.testTag("edit_profile"), enabled = !saving) { Icon(Icons.Outlined.Edit, null, Modifier.size(16.dp)); Text(" Edit") }
-        }
-        WashCard {
             ProfileRow(Icons.Outlined.Badge, "Nama Lengkap", customer.name)
-            HorizontalDivider(color = WashBorder)
+            ProfileDivider()
             ProfileRow(Icons.Outlined.ChatBubbleOutline, "Nomor Handphone", customer.phone)
-            HorizontalDivider(color = WashBorder)
+            ProfileDivider()
             ProfileRow(Icons.Outlined.Email, "Email", customer.email)
-            HorizontalDivider(color = WashBorder)
+            ProfileDivider()
             ProfileRow(Icons.Outlined.LocationOn, "Alamat", customer.address.ifBlank { "Belum diisi" })
         }
-        SectionLabel("PREFERENSI LAYANAN")
-        WashCard {
-            Text("Aroma Parfum Favorit", style = MaterialTheme.typography.labelMedium)
-            Box {
-                Row(Modifier.fillMaxWidth().background(WashSoftBlue, MaterialTheme.shapes.small)
-                    .clickable { fragranceMenu = true }.padding(14.dp).testTag("profile_fragrance"), verticalAlignment = Alignment.CenterVertically) {
-                    Text(fragrance, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                    Icon(Icons.Outlined.ExpandMore, "Pilih aroma parfum", tint = WashMuted)
+        ProfileCard {
+            ProfileSectionHeader(Icons.Outlined.Tune, "Preferensi Layanan", "Sesuaikan perawatan cucian Anda")
+            Text("Aroma Parfum Favorit", style = MaterialTheme.typography.labelMedium, color = WashMuted)
+            Box(Modifier.fillMaxWidth()) {
+                Surface(color = WashBackground, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, WashBorder)) {
+                    Row(Modifier.fillMaxWidth().clickable(enabled = !saving) { fragranceMenu = true }
+                        .padding(14.dp).testTag("profile_fragrance"), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Icon(Icons.Outlined.Spa, null, Modifier.size(20.dp), tint = WashTeal)
+                        Text(fragrance.ifBlank { "Pilih aroma parfum" }, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                        Icon(Icons.Outlined.ExpandMore, "Pilih aroma parfum", tint = WashMuted)
+                    }
                 }
                 DropdownMenu(fragranceMenu, { fragranceMenu = false }) {
                     vm.fragrances.forEach { value ->
@@ -73,26 +82,22 @@ fun ProfileScreen(vm: MaxwashViewModel, onLogout: () -> Unit, onLocation: () -> 
                     }
                 }
             }
-            WashField(notes, { notes = it }, "Catatan Khusus Tetap", "profile_notes", multiline = true)
-            Text("Otomatis disertakan pada tampilan profil", style = MaterialTheme.typography.labelSmall, color = WashMuted)
-            HorizontalDivider(color = WashBorder)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconTile(Icons.Outlined.NotificationsNone)
-                Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                    Text("Update Status Laundry", style = MaterialTheme.typography.titleSmall)
-                    Text("Simpan preferensi update laundry", style = MaterialTheme.typography.bodySmall, color = WashMuted)
+            WashField(notes, { notes = it }, "Catatan Khusus Tetap", "profile_notes", multiline = true, enabled = !saving)
+            Text("Tambahkan catatan agar layanan sesuai kebutuhan.", style = MaterialTheme.typography.bodySmall, color = WashMuted)
+            Surface(color = Color(0xFFF5F8FB), shape = RoundedCornerShape(14.dp)) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ProfileIcon(Icons.Outlined.NotificationsNone, background = Color.White)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("Update Status Laundry", style = MaterialTheme.typography.titleSmall)
+                        Text("Preferensi pembaruan pesanan", style = MaterialTheme.typography.bodySmall, color = WashMuted)
+                    }
+                    Switch(notifications, { notifications = it }, Modifier.testTag("profile_notifications"), enabled = !saving)
                 }
-                Switch(notifications, { notifications = it }, Modifier.testTag("profile_notifications"))
             }
         }
-        SectionLabel("OUTLET LANGGANAN")
-        WashCard {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconTile(Icons.Outlined.Storefront)
-                Column(Modifier.weight(1f)) {
-                    Text(vm.outlet(customer.outletId)?.name ?: "Belum dipilih", style = MaterialTheme.typography.titleSmall)
-                    Text(vm.outlet(customer.outletId)?.openingHours.orEmpty(), color = WashGreen, style = MaterialTheme.typography.bodySmall)
-                }
+        ProfileCard {
+            ProfileSectionHeader(Icons.Outlined.Storefront, "Outlet Langganan", "Outlet pilihan untuk cucian Anda") {
                 TextButton({
                     val next = vm.outlets.getOrNull((vm.outlets.indexOfFirst { it.id == customer.outletId } + 1) % vm.outlets.size)
                     if (next != null) {
@@ -104,19 +109,41 @@ fun ProfileScreen(vm: MaxwashViewModel, onLogout: () -> Unit, onLocation: () -> 
                     }
                 }, Modifier.testTag("change_profile_outlet"), enabled = !saving && vm.outlets.isNotEmpty()) { Text("Ganti") }
             }
-            TextButton({ vm.selectOutlet(customer.outletId); onLocation() }, enabled = customer.outletId.isNotBlank()) { Text("Lihat lokasi outlet →") }
+            Text(outlet?.name ?: "Belum dipilih", style = MaterialTheme.typography.titleMedium)
+            if (outlet != null) {
+                Text(outlet.address, style = MaterialTheme.typography.bodySmall, color = WashMuted)
+                Surface(color = Color(0xFFEBF6F0), shape = RoundedCornerShape(8.dp)) {
+                    Row(Modifier.padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(Icons.Outlined.Schedule, null, Modifier.size(15.dp), tint = WashGreen)
+                        Text(outlet.openingHours, color = WashGreen, style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
+            HorizontalDivider(color = WashBorder)
+            TextButton({ vm.selectOutlet(customer.outletId); onLocation() },
+                Modifier.align(Alignment.End), enabled = customer.outletId.isNotBlank(), contentPadding = PaddingValues(horizontal = 4.dp)) {
+                Text("Lihat lokasi outlet", style = MaterialTheme.typography.labelMedium)
+                Spacer(Modifier.width(6.dp))
+                Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, Modifier.size(16.dp))
+            }
         }
-        PrimaryButton(if (saving) "Menyimpan…" else "Simpan Perubahan", {
+        Button({
             saving = true
             scope.launch(Dispatchers.Main.immediate) {
                 if (vm.updateProfile(customer.copy(fragrance = fragrance, notes = notes, notificationEnabled = notifications))) feedback("Perubahan profil disimpan")
                 saving = false
             }
-        }, Modifier.testTag("save_preferences"), enabled = !saving)
+        }, Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("save_preferences"), enabled = !saving,
+            shape = RoundedCornerShape(14.dp), elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)) {
+            Icon(Icons.Outlined.Check, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(if (saving) "Menyimpan…" else "Simpan Perubahan", style = MaterialTheme.typography.labelLarge)
+        }
         TextButton(onLogout, Modifier.align(Alignment.CenterHorizontally).testTag("logout"), colors = ButtonDefaults.textButtonColors(contentColor = WashError)) {
             Icon(Icons.AutoMirrored.Outlined.Logout, null, Modifier.size(18.dp)); Text(" Keluar dari Akun")
         }
-        Text("MAXWASH CUSTOMER", Modifier.fillMaxWidth(), style = MaterialTheme.typography.labelSmall, color = WashMuted, textAlign = TextAlign.Center)
+        Text("Laundry Pintar & Praktis", Modifier.fillMaxWidth(), style = MaterialTheme.typography.labelSmall, color = WashMuted, textAlign = TextAlign.Center)
     }
     if (editing) EditProfileDialog(customer, { editing = false }) {
         if (!saving) {
@@ -130,10 +157,85 @@ fun ProfileScreen(vm: MaxwashViewModel, onLogout: () -> Unit, onLocation: () -> 
 }
 
 @Composable
-private fun ProfileRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        IconTile(icon)
-        Column(Modifier.weight(1f)) { Text(label, style = MaterialTheme.typography.labelSmall, color = WashMuted); Text(value, style = MaterialTheme.typography.bodyMedium) }
+private fun ProfileIdentityCard(customer: Customer) {
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, Color(0xFFDCE9EF)), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+        Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Color(0xFFEAF5FA), Color.White)))
+            .padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Surface(Modifier.size(72.dp).shadow(3.dp, CircleShape), shape = CircleShape, color = WashTeal,
+                    border = BorderStroke(3.dp, Color.White)) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(customer.name.split(" ").filter { it.isNotBlank() }.take(2).joinToString("") { it.take(1).uppercase() },
+                            style = MaterialTheme.typography.headlineLarge, color = Color.White)
+                    }
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("PELANGGAN MAXWASH", style = MaterialTheme.typography.labelSmall, color = WashTeal)
+                    Text(customer.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.testTag("profile_name"))
+                    Text(customer.phone, style = MaterialTheme.typography.bodySmall, color = WashMuted)
+                }
+            }
+            HorizontalDivider(color = WashTeal.copy(alpha = 0.10f))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(Icons.Outlined.WorkspacePremium, null, Modifier.size(19.dp), tint = WashTeal)
+                    Text(customer.membership, style = MaterialTheme.typography.labelLarge, color = WashTeal)
+                }
+                Surface(shape = RoundedCornerShape(10.dp), color = Color.White, border = BorderStroke(1.dp, WashBorder)) {
+                    Row(Modifier.padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(Icons.Outlined.Stars, null, Modifier.size(17.dp), tint = WashGreen)
+                        Text("${customer.points} Poin", style = MaterialTheme.typography.labelMedium, color = WashNavy)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileCard(content: @Composable ColumnScope.() -> Unit) {
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, WashBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp)) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
+    }
+}
+
+@Composable
+private fun ProfileSectionHeader(icon: ImageVector, title: String, subtitle: String, action: @Composable (() -> Unit)? = null) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        ProfileIcon(icon)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = WashMuted)
+        }
+        action?.invoke()
+    }
+}
+
+@Composable
+private fun ProfileIcon(icon: ImageVector, background: Color = WashSoftBlue) {
+    Box(Modifier.size(36.dp).background(background, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
+        Icon(icon, null, Modifier.size(19.dp), tint = WashTeal)
+    }
+}
+
+@Composable
+private fun ProfileDivider() = HorizontalDivider(Modifier.padding(start = 50.dp), color = WashBorder)
+
+@Composable
+private fun ProfileRow(icon: ImageVector, label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        ProfileIcon(icon, Color(0xFFF5F8FB))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(label, style = MaterialTheme.typography.bodySmall, color = WashMuted)
+            Text(value, style = MaterialTheme.typography.bodyMedium)
+        }
     }
 }
 

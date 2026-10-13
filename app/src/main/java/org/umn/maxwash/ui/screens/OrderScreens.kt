@@ -169,12 +169,12 @@ fun OrderDetailsScreen(vm: MaxwashViewModel, orderId: String?, onLocation: () ->
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 IconTile(Icons.Outlined.DryCleaning, background = WashTeal, tint = Color.White)
                 Column(Modifier.weight(1f)) {
-                    Text(order.service, style = MaterialTheme.typography.titleMedium)
-                    Text(weight(order.weightKg), style = MaterialTheme.typography.bodySmall, color = WashMuted)
+                    Text(order.service, style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("detail_service"))
+                    Text(weight(order.weightKg), style = MaterialTheme.typography.bodySmall, color = WashMuted, modifier = Modifier.testTag("detail_weight"))
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Total Biaya", style = MaterialTheme.typography.labelSmall, color = WashMuted)
-                    Text(rupiah(order.total), style = MaterialTheme.typography.titleMedium, color = WashTeal)
+                    Text(rupiah(order.total), style = MaterialTheme.typography.titleMedium, color = WashTeal, modifier = Modifier.testTag("detail_total"))
                 }
             }
             Text("Diterima: ${order.date}", style = MaterialTheme.typography.bodySmall, color = WashMuted)

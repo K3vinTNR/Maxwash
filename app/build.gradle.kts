@@ -1,9 +1,20 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
 }
+
+val mapProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val tomTomApiKey = providers.environmentVariable("TOMTOM_API_KEY").orNull
+    ?.takeIf { it.isNotBlank() } ?: mapProperties.getProperty("TOMTOM_API_KEY", "").trim()
+val quotedTomTomApiKey = "\"" + tomTomApiKey.replace("\\", "\\\\").replace("\"", "\\\"")
+    .replace("\n", "\\n").replace("\r", "\\r") + "\""
 
 android {
     namespace = "org.umn.maxwash"
@@ -19,6 +30,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "org.umn.maxwash.MaxwashTestRunner"
+        buildConfigField("String", "TOMTOM_API_KEY", quotedTomTomApiKey)
     }
 
     buildTypes {
@@ -34,6 +46,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

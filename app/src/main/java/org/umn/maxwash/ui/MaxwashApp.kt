@@ -3,6 +3,7 @@ package org.umn.maxwash.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -16,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import org.umn.maxwash.ui.components.*
 import org.umn.maxwash.ui.screens.*
 import org.umn.maxwash.ui.theme.*
+import org.umn.maxwash.data.CheckoutDraft
 
 @Composable
 fun MaxwashApp(vm: MaxwashViewModel = viewModel(), startDestination: String = "splash") {
@@ -23,6 +25,7 @@ fun MaxwashApp(vm: MaxwashViewModel = viewModel(), startDestination: String = "s
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route ?: startDestination
     val auth = route in listOf("splash", "login", "register")
+    val checkout = route in listOf("pickup", "choose_service", "confirm_payment")
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val feedback: (String) -> Unit = { message -> scope.launch(Dispatchers.Main.immediate) { snackbar.showSnackbar(message) } }
@@ -62,18 +65,50 @@ fun MaxwashApp(vm: MaxwashViewModel = viewModel(), startDestination: String = "s
         }
         return
     }
+    var checkoutDraft by rememberSaveable(vm.customer?.id, stateSaver = CheckoutDraftSaver) {
+        mutableStateOf(CheckoutDraft(address = vm.customer?.address.orEmpty(), addressNotes = vm.customer?.notes.orEmpty(),
+            outletId = vm.selectedOutletId.ifBlank { vm.outlets.firstOrNull()?.id.orEmpty() },
+            serviceId = (vm.services.find { it.id == "SVC-002" } ?: vm.services.firstOrNull())?.id.orEmpty(),
+            fragrance = vm.customer?.fragrance.orEmpty().ifBlank { vm.fragrances.firstOrNull().orEmpty() }))
+    }
+    val profileAddress = vm.customer?.address.orEmpty()
+    val profileNotes = vm.customer?.notes.orEmpty()
+    var previousProfileAddress by rememberSaveable(vm.customer?.id) { mutableStateOf(profileAddress) }
+    var previousProfileNotes by rememberSaveable(vm.customer?.id) { mutableStateOf(profileNotes) }
+    LaunchedEffect(vm.customer?.id, profileAddress, profileNotes) {
+        checkoutDraft = checkoutDraft.syncProfileLocation(previousProfileAddress, previousProfileNotes,
+            profileAddress, profileNotes)
+        previousProfileAddress = profileAddress
+        previousProfileNotes = profileNotes
+    }
+    LaunchedEffect(vm.completedCheckoutOrderId) {
+        if (vm.completedCheckoutOrderId != null) {
+            nav.navigate("home") {
+                popUpTo("home") { inclusive = false }
+                launchSingleTop = true
+            }
+            checkoutDraft = checkoutDraft.copy(weightInput = "", promoCode = "", clothingNotes = "", hypoallergenic = false)
+            vm.consumeCompletedCheckout()
+            feedback("Pembayaran berhasil. Pesanan Anda sudah dibuat.")
+        }
+    }
     Surface(Modifier.fillMaxSize(), color = WashBackground) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             Scaffold(Modifier.widthIn(max = 600.dp).fillMaxSize(), containerColor = WashBackground,
                 topBar = {
-                    if (!auth) WashHeader(when (route) {
+                    if (route in listOf("choose_service", "confirm_payment")) CheckoutHeader(
+                        if (route == "choose_service") "Pilih Layanan" else "Konfirmasi Pembayaran",
+                        { if (!vm.isSubmittingCheckout) nav.popBackStack() },
+                        { if (!vm.isSubmittingCheckout) topNavigate("profile") })
+                    else if (!auth) WashHeader(when (route) {
                         "home" -> "HOME"; "orders" -> "PESANAN SAYA"; "history" -> "RIWAYAT PESANAN"
                         "profile" -> "PROFIL PELANGGAN"; "location" -> "LOKASI LAUNDRY"
+                        "pickup" -> "PENJEMPUTAN"
                         "notifications" -> "NOTIFIKASI"; else -> "ORDER TRACKING"
                     }, vm.unreadCount, { nav.navigate("notifications") { launchSingleTop = true } }, { topNavigate("profile") },
-                        if (route in listOf("location", "notifications", "orders/{orderId}")) ({ nav.popBackStack() }) else null)
+                        if (route in listOf("location", "notifications", "orders/{orderId}", "pickup")) ({ nav.popBackStack() }) else null)
                 },
-                bottomBar = { if (!auth) WashBottomBar(if (route == "orders/{orderId}") "orders" else route, ::topNavigate) },
+                bottomBar = { if (!auth && !checkout) WashBottomBar(if (route == "orders/{orderId}") "orders" else route, ::topNavigate) },
                 snackbarHost = { SnackbarHost(snackbar) }) { padding ->
                 NavHost(nav, startDestination, modifier = Modifier.padding(padding).imePadding()) {
                     composable("splash") {
@@ -86,6 +121,19 @@ fun MaxwashApp(vm: MaxwashViewModel = viewModel(), startDestination: String = "s
                     composable("login") { LoginScreen(vm, ::enterHome, { nav.navigate("register") }) }
                     composable("register") { RegisterScreen(vm, ::enterHome, { nav.popBackStack() }) }
                     composable("home") { HomeScreen(vm, ::details, ::topNavigate, { nav.navigate("location") }, feedback) }
+                    composable("pickup") {
+                        PickupScreen(checkoutDraft, vm.outlets, { checkoutDraft = it },
+                            { nav.navigate("choose_service") { launchSingleTop = true } }, feedback)
+                    }
+                    composable("choose_service") {
+                        ChooseServiceScreen(checkoutDraft, vm.services, vm.fragrances, { checkoutDraft = it },
+                            { nav.navigate("confirm_payment") { launchSingleTop = true } })
+                    }
+                    composable("confirm_payment") {
+                        ConfirmPaymentScreen(checkoutDraft, vm.services.find { it.id == checkoutDraft.serviceId },
+                            vm.outlet(checkoutDraft.outletId), { checkoutDraft = it }, vm.isSubmittingCheckout,
+                            { vm.submitCheckout(checkoutDraft) })
+                    }
                     composable("orders") { OrdersScreen(vm, ::details, feedback) }
                     composable("history") { OrdersScreen(vm, ::details, feedback) }
                     composable("orders/{orderId}", arguments = listOf(navArgument("orderId") { type = NavType.StringType })) { backStack ->

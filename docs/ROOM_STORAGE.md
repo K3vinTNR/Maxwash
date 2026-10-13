@@ -6,6 +6,8 @@ Implementasi pada 10 Oktober 2026 mengganti `MockRepository` dengan Room 2.8.5 d
 
 `MaxwashApplication` menyediakan satu repository dan satu instance database. `MaxwashViewModel` memuat database sebelum navigasi, memulihkan sesi, dan mengamati perubahan tabel melalui Room Flow. Operasi tulis menggunakan coroutine dan transaksi; layar menampilkan kegagalan penyimpanan dan hanya melanjutkan login/registrasi/simpan setelah transaksi berhasil.
 
+Alur Beranda → Layanan → Penjemputan → Pilih Layanan → Konfirmasi Pembayaran memakai katalog/profil Room serta draft UI sementara. Tombol Bayar Sekarang melewati pembayaran nyata untuk prototipe, lalu membuat pesanan, event awal dan notifikasi di Room. Setelah berhasil, Beranda menampilkan pesanan baru dan Lacak Pesanan membuka detail ID yang sama. Total tersimpan mencakup tambahan deterjen dan diskon promo. Detail: [SERVICES_FLOW.md](SERVICES_FLOW.md).
+
 | Tabel | Isi |
 | --- | --- |
 | customers | Identitas, alamat, preferensi, outlet langganan, membership/poin, hash dan salt password |

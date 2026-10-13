@@ -1,0 +1,68 @@
+INSTRUMENTATION_STATUS: class=org.umn.maxwash.MaxwashFlowTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+org.umn.maxwash.MaxwashFlowTest:
+INSTRUMENTATION_STATUS: test=pickupUsesNewProfileAddressAndNotesWithoutRestarting
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=org.umn.maxwash.MaxwashFlowTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Failed to assert the following: (Text + EditableText = [Jl. Alamat Profil No. 12])
+Semantics of the node:
+Node #692 at (l=108.0, t=2376.0, r=988.0, b=2447.0)px, Tag: 'pickup_address'
+Text = '[Tambahkan alamat penjemputan]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 3 siblings
+Selector used: (TestTag = 'pickup_address')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:264)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:254)
+	at androidx.compose.ui.test.AssertionsKt.assertTextEquals(Assertions.kt:185)
+	at androidx.compose.ui.test.AssertionsKt.assertTextEquals$default(Assertions.kt:181)
+	at org.umn.maxwash.MaxwashFlowTest.pickupUsesNewProfileAddressAndNotesWithoutRestarting(MaxwashFlowTest.kt:254)
+
+INSTRUMENTATION_STATUS: stream=
+Error in pickupUsesNewProfileAddressAndNotesWithoutRestarting(org.umn.maxwash.MaxwashFlowTest):
+java.lang.AssertionError: Failed to assert the following: (Text + EditableText = [Jl. Alamat Profil No. 12])
+Semantics of the node:
+Node #692 at (l=108.0, t=2376.0, r=988.0, b=2447.0)px, Tag: 'pickup_address'
+Text = '[Tambahkan alamat penjemputan]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 3 siblings
+Selector used: (TestTag = 'pickup_address')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:264)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:254)
+	at androidx.compose.ui.test.AssertionsKt.assertTextEquals(Assertions.kt:185)
+	at androidx.compose.ui.test.AssertionsKt.assertTextEquals$default(Assertions.kt:181)
+	at org.umn.maxwash.MaxwashFlowTest.pickupUsesNewProfileAddressAndNotesWithoutRestarting(MaxwashFlowTest.kt:254)
+
+INSTRUMENTATION_STATUS: test=pickupUsesNewProfileAddressAndNotesWithoutRestarting
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 25.417
+There was 1 failure:
+1) pickupUsesNewProfileAddressAndNotesWithoutRestarting(org.umn.maxwash.MaxwashFlowTest)
+java.lang.AssertionError: Failed to assert the following: (Text + EditableText = [Jl. Alamat Profil No. 12])
+Semantics of the node:
+Node #692 at (l=108.0, t=2376.0, r=988.0, b=2447.0)px, Tag: 'pickup_address'
+Text = '[Tambahkan alamat penjemputan]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 3 siblings
+Selector used: (TestTag = 'pickup_address')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:264)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:254)
+	at androidx.compose.ui.test.AssertionsKt.assertTextEquals(Assertions.kt:185)
+	at androidx.compose.ui.test.AssertionsKt.assertTextEquals$default(Assertions.kt:181)
+	at org.umn.maxwash.MaxwashFlowTest.pickupUsesNewProfileAddressAndNotesWithoutRestarting(MaxwashFlowTest.kt:254)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+INSTRUMENTATION_CODE: -1

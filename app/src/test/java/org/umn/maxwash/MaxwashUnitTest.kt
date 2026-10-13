@@ -6,6 +6,29 @@ import org.umn.maxwash.data.*
 
 
 class MaxwashUnitTest {
+    @Test fun mapCoordinatesRejectInvalidValuesAndProduceNonemptyBoundsAtWorldEdges() {
+        listOf(Double.NaN to 0.0, Double.POSITIVE_INFINITY to 0.0, 91.0 to 0.0, 0.0 to 181.0).forEach { (lat, lon) ->
+            assertTrue(runCatching { MapPoint(lat, lon) }.isFailure)
+        }
+        listOf(MapPoint(90.0, 180.0), MapPoint(-90.0, -180.0)).forEach { point ->
+            val bounds = java.net.URI(point.embeddedMapUrl()).query.substringAfter("bbox=").substringBefore('&').split(',').map(String::toDouble)
+            assertTrue(bounds[0] < bounds[2])
+            assertTrue(bounds[1] < bounds[3])
+            assertTrue(bounds[0] >= -180.0 && bounds[2] <= 180.0)
+        }
+    }
+
+    @Test fun mapUrlsKeepCoordinatesInDecimalFormatAndOverviewHasNoAssumedPin() {
+        val previousLocale = java.util.Locale.getDefault()
+        try {
+            java.util.Locale.setDefault(java.util.Locale.forLanguageTag("id-ID"))
+            val url = MapPoint(-6.23, 106.81).embeddedMapUrl()
+            assertEquals("appassets.androidplatform.net", java.net.URI(url).host)
+            assertTrue(url.endsWith("&marker=-6.23,106.81"))
+            assertFalse(INDONESIA_MAP_URL.contains("marker="))
+        } finally { java.util.Locale.setDefault(previousLocale) }
+    }
+
     @Test fun requiredFieldsCannotBeEmpty() {
         assertFalse(FormValidation.registration("", "", "", "", ""))
         assertNotNull(FormValidation.name(" "))
@@ -78,5 +101,58 @@ class MaxwashUnitTest {
         val septemberInJakarta = java.time.Instant.parse("2026-09-30T16:00:00Z").toEpochMilli()
         assertTrue(LocalTimeFormat.isThisMonth(octoberInJakarta, now))
         assertFalse(LocalTimeFormat.isThisMonth(septemberInJakarta, now))
+    }
+
+    @Test fun emptyPickupDraftUsesSavedProfileLocationWithoutResettingServiceChoices() {
+        val draft = CheckoutDraft(outletId = "outlet", serviceId = "service", weightInput = "4.8",
+            fragrance = "Ocean Breeze", hypoallergenic = true, payment = PaymentMethod.AT_OUTLET)
+        assertEquals(draft.copy(address = "Jl. Profil No. 12", addressNotes = "Pagar biru"),
+            draft.syncProfileLocation("", "", "Jl. Profil No. 12", "Pagar biru"))
+    }
+
+    @Test fun inheritedPickupLocationFollowsProfileChangesAndRemoval() {
+        val draft = CheckoutDraft(address = "Jl. Lama", addressNotes = "Patokan lama", outletId = "outlet")
+        val updated = draft.syncProfileLocation("Jl. Lama", "Patokan lama", "Jl. Baru", "Patokan baru")
+        assertEquals(draft.copy(address = "Jl. Baru", addressNotes = "Patokan baru"), updated)
+        val cleared = updated.syncProfileLocation("Jl. Baru", "Patokan baru", "", "")
+        assertEquals("", cleared.address)
+        assertFalse(cleared.locationReady)
+    }
+
+    @Test fun profileChangesPreserveCustomPickupAddressAndExplicitlyClearedNotes() {
+        val draft = CheckoutDraft(address = "Jl. Kantor", addressNotes = "", outletId = "outlet")
+        assertEquals(draft, draft.syncProfileLocation("Jl. Rumah Lama", "Catatan lama", "Jl. Rumah Baru", "Catatan baru"))
+        val addressOnly = draft.copy(address = "Jl. Rumah Lama")
+            .syncProfileLocation("Jl. Rumah Lama", "Catatan lama", "Jl. Rumah Baru", "Catatan baru")
+        assertEquals("Jl. Rumah Baru", addressOnly.address)
+        assertEquals("", addressOnly.addressNotes)
+    }
+
+    @Test fun checkoutQuoteUsesSelectedRateWeightAndOptionalDetergent() {
+        val service = LaundryService("SVC-002", "Wash & Iron", 10000, 24)
+        val draft = CheckoutDraft(weightInput = "4,8", hypoallergenic = true)
+        assertEquals(4.8, draft.weightKg!!, 0.001)
+        assertEquals(CheckoutQuote(48000, 2000, 0), draft.quote(service))
+        assertEquals(50000, draft.quote(service).total)
+        assertEquals(48000, draft.copy(hypoallergenic = false).quote(service).total)
+    }
+
+    @Test fun checkoutPromoCannotMakeTheBillNegativeOrApplyUnknownCode() {
+        val service = LaundryService("service", "Service", 10000, 24)
+        val draft = CheckoutDraft(weightInput = "0.1", promoCode = " newclean5k ")
+        assertEquals(CheckoutQuote(1000, 0, 1000), draft.quote(service))
+        assertEquals(0, draft.quote(service).total)
+        assertEquals(1000, draft.copy(promoCode = "unknown").quote(service).total)
+        assertEquals(0, draft.quote(null).total)
+    }
+
+    @Test fun checkoutRejectsInvalidWeightsAndRequiresAddressOnlyForPickup() {
+        listOf("", "0", "-1", "101", "NaN", "Infinity", "text").forEach {
+            assertNull(it, CheckoutDraft(weightInput = it).weightKg)
+        }
+        assertFalse(CheckoutDraft(outletId = "outlet").locationReady)
+        assertTrue(CheckoutDraft(outletId = "outlet", address = "Jl. Pengujian").locationReady)
+        assertTrue(CheckoutDraft(outletId = "outlet", collection = CollectionMethod.DROP_OFF).locationReady)
+        assertFalse(CheckoutDraft(collection = CollectionMethod.DROP_OFF).locationReady)
     }
 }

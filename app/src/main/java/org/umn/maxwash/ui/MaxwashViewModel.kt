@@ -20,6 +20,10 @@ class MaxwashViewModel(application: Application) : AndroidViewModel(application)
         private set
     var filter by mutableStateOf(OrderFilter.ALL)
     var search by mutableStateOf("")
+    var isSubmittingCheckout by mutableStateOf(false)
+        private set
+    var completedCheckoutOrderId by mutableStateOf<String?>(null)
+        private set
     val customer get() = data.customer
     val signedIn get() = customer != null
     val orders get() = data.orders
@@ -79,6 +83,22 @@ class MaxwashViewModel(application: Application) : AndroidViewModel(application)
         var id: String? = null
         return if (write { id = repository.createOrder(serviceId, weightKg, outletId) }) id else null
     }
+
+    fun submitCheckout(draft: CheckoutDraft) {
+        if (isSubmittingCheckout || completedCheckoutOrderId != null) return
+        isSubmittingCheckout = true
+        viewModelScope.launch {
+            try {
+                var id: String? = null
+                // Payment is bypassed for the prototype; the local order still needs to be saved.
+                if (write { id = repository.createCheckoutOrder(draft) }) completedCheckoutOrderId = id
+            } finally {
+                isSubmittingCheckout = false
+            }
+        }
+    }
+
+    fun consumeCompletedCheckout() { completedCheckoutOrderId = null }
 
     private suspend fun write(action: suspend () -> Unit): Boolean {
         errorMessage = null

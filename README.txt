@@ -1,5 +1,5 @@
 MAXWASH - Aplikasi laundry lokal (Room) / UTS IF570L
-Tanggal pembaruan: 11 Oktober 2026
+Tanggal pembaruan: 13 Oktober 2026
 
 DESKRIPSI
 Aplikasi pelanggan laundry Android menggunakan Kotlin dan Jetpack Compose.
@@ -31,6 +31,18 @@ LAYAR DAN RUBRIK
 - Lokasi: daftar outlet/alamat dari Room; petunjuk arah membuka peta/browser.
 - Free choice: Profil; edit lokal, preferensi, logout.
 - Tambahan: Splash, Login, Home, Notifications dengan read/unread state.
+- Beranda > Layanan > Penjemputan > Pilih Layanan > Konfirmasi Pembayaran.
+  Tampilan dan navigasi mengikuti tiga gambar referensi; pilihan dibawa antar
+  halaman dan bertahan setelah Activity recreation. Bayar Sekarang melewati
+  pembayaran nyata untuk prototipe dan menyimpan pesanan, total serta event awal
+  ke Room. Beranda langsung menampilkan pesanan baru; Lacak Pesanan membuka
+  Order Tracking dengan ID yang sama. Lihat docs/SERVICES_FLOW.md.
+  Peta Penjemputan: TomTom Orbis v2 interaktif, pencarian alamat/outlet melalui
+  TomTom Geocoding, status memuat/gagal dan buka Maps. Memerlukan internet.
+  Isi TOMTOM_API_KEY di local.properties (diabaikan Git) atau environment,
+  lalu build ulang. Key perlu akses Map Display dan Geocoding Orbis v2.
+  Alamat/catatan Penjemputan mengikuti profil yang disimpan; pilihan alamat
+  khusus untuk penjemputan tetap dipertahankan, termasuk saat Activity recreation.
 - Custom Material 3: Color.kt, Type.kt, Theme.kt mendefinisikan warna/tipografi/shapes.
 - State: ViewModel bersama; rememberSaveable untuk form, dialog, preferensi UI.
 - Data: Entity + DAO + MaxwashDatabase + RoomRepository, Flow dan coroutine.
@@ -68,10 +80,19 @@ APK: app/build/outputs/apk/debug/app-debug.apk
 Laporan unit: app/build/reports/tests/testDebugUnitTest/index.html
 Laporan connected hanya ada bila connectedDebugAndroidTest benar-benar dijalankan.
 Hasil terkini dan runner ADB dicatat di docs/ROOM_STORAGE.md; bukan laporan
-connected Gradle. Pembaruan 11 Oktober 2026: build sukses, 10 unit test dan
+connected Gradle. Penghapusan demo 11 Oktober 2026: build sukses, 10 unit test dan
 17 tes emulator lulus (8 UI + 9 repository); lint 0 error / 13 warning.
 Log emulator: docs/verification/account-cleanup-instrumentation.txt.
 Penjelasan arsitektur dan batas pengujian: docs/ROOM_STORAGE.md.
+Pembaruan alur Layanan: build sukses, 13 unit test dan 2 tes UI baru lulus;
+lint 0 error / 13 warning. Cakupan dan hasil: docs/SERVICES_FLOW.md.
+Checkout ke Beranda/Order Tracking: build sukses, 18 unit test dan 13 tes emulator
+(11 repository + 2 UI checkout) lulus. Log: docs/verification/checkout-orders-instrumentation.txt.
+Peta asli: Leaflet 1.9.4 dibundel lokal, tile/pencarian alamat dari TomTom Orbis v2.
+Key dikirim dalam header HTTPS native, tanpa masuk URL/HTML/JS. Tanpa key,
+peta menampilkan status belum tersedia dan navigasi layanan tetap berjalan.
+Tes jaringan peta memerlukan internet dan key TomTom yang aktif;
+bukti dan verifikasi tambahan ada di docs/SERVICES_FLOW.md.
 docs/VERIFICATION.md mencatat pengujian prototipe sebelumnya.
 UI tests menggunakan database in-memory terpisah; tes repository menggunakan
 database sementara yang dibuka ulang, tanpa menghapus data akun aplikasi.

@@ -40,7 +40,7 @@ fun HomeScreen(vm: MaxwashViewModel, onOrder: (String) -> Unit, navigate: (Strin
         }
         if (active != null) WashCard {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("ORDER #${active.id}", style = MaterialTheme.typography.titleMedium)
+                Text("ORDER #${active.id}", Modifier.weight(1f).testTag("home_order_id"), style = MaterialTheme.typography.titleMedium)
                 StatusPill(active.status)
             }
             Row(Modifier.fillMaxWidth().background(WashSoftBlue, MaterialTheme.shapes.medium).padding(12.dp), verticalAlignment = Alignment.CenterVertically,
@@ -52,27 +52,27 @@ fun HomeScreen(vm: MaxwashViewModel, onOrder: (String) -> Unit, navigate: (Strin
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Layanan", style = MaterialTheme.typography.bodySmall, color = WashMuted)
-                    Text(active.service, style = MaterialTheme.typography.labelMedium, color = WashTeal)
-                    Text(weight(active.weightKg), style = MaterialTheme.typography.labelSmall, color = WashTeal)
+                    Text(active.service, style = MaterialTheme.typography.labelMedium, color = WashTeal, modifier = Modifier.testTag("home_order_service"))
+                    Text(weight(active.weightKg), style = MaterialTheme.typography.labelSmall, color = WashTeal, modifier = Modifier.testTag("home_order_weight"))
                 }
             }
             PrimaryButton("Lacak Pesanan →", { onOrder(active.id) }, Modifier.testTag("home_track"))
         } else WashCard {
-            EmptyState("Belum ada pesanan aktif", "Catat pesanan Anda melalui menu Pesanan.", Modifier.testTag("home_orders_empty"))
+            EmptyState("Belum ada pesanan aktif", "Pilih layanan cucian melalui menu Layanan.", Modifier.testTag("home_orders_empty"))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("Menu Utama", style = MaterialTheme.typography.titleSmall)
             TextButton({ navigate("orders") }) { Text("Semua Pesanan") }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            listOf(Triple("Pesanan", Icons.Outlined.LocalLaundryService, { navigate("orders") }),
+            listOf(Triple("Layanan", Icons.Outlined.LocalLaundryService, { navigate("pickup") }),
                 Triple("Cek Tarif", Icons.Outlined.Calculate, { feedback(vm.services.joinToString(" · ") { "${it.name} ${rupiah(it.pricePerKg)}/kg" }.ifBlank { "Tarif belum tersedia." }) }),
                 Triple("Nota Digital", Icons.AutoMirrored.Outlined.ReceiptLong, {
                     val receipt = vm.orders.firstOrNull { it.isCompleted } ?: vm.orders.firstOrNull()
                     if (receipt != null) onOrder(receipt.id) else feedback("Belum ada pesanan untuk ditampilkan.")
                 }),
                 Triple("Lokasi", Icons.Outlined.LocationOn, onLocation)).forEach { (label, icon, action) ->
-                Column(Modifier.weight(1f).clickable(onClick = action).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally,
+                Column(Modifier.weight(1f).clickable(onClick = action).padding(4.dp).testTag("home_menu_${label.replace(' ', '_')}"), horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     IconTile(icon, Modifier.size(56.dp), Color.White)
                     Text(label, style = MaterialTheme.typography.labelMedium)

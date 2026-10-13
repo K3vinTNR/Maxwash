@@ -111,18 +111,31 @@ class RoomRepository(private val database: MaxwashDatabase, private val catalogD
     suspend fun logout() { dao.saveSession(SessionEntity()) }
 
     suspend fun createOrder(serviceId: String, weightKg: Double, outletId: String): String = database.withTransaction {
+        recordOrder(serviceId, weightKg, outletId)
+    }
+
+    suspend fun createCheckoutOrder(draft: CheckoutDraft): String = database.withTransaction {
+        require(draft.locationReady) { "Lengkapi alamat dan outlet terlebih dahulu." }
+        val weightKg = requireNotNull(draft.weightKg) { "Berat harus lebih dari 0 dan maksimal 100 kg." }
+        require(draft.promoCode.isBlank() || draft.promoCode.trim().equals("NEWCLEAN5K", true)) { "Kode promo tidak tersedia." }
+        recordOrder(draft.serviceId, weightKg, draft.outletId, draft)
+    }
+
+    private suspend fun recordOrder(serviceId: String, weightKg: Double, outletId: String, draft: CheckoutDraft? = null): String {
         val account = currentAccount()
         require(weightKg.isFinite() && weightKg > 0 && weightKg <= 100) { "Berat harus lebih dari 0 dan maksimal 100 kg." }
         val service = requireNotNull(dao.services().find { it.id == serviceId }) { "Layanan tidak tersedia." }
         require(dao.outlets().any { it.id == outletId }) { "Outlet tidak ditemukan." }
+        val total = draft?.quote(LaundryService(service.id, service.name, service.pricePerKg, service.turnaroundHours))?.total
+            ?: (weightKg * service.pricePerKg).roundToInt()
         val now = System.currentTimeMillis()
         val id = "MW-${UUID.randomUUID().toString().replace("-", "").take(12).uppercase(Locale.ROOT)}"
         dao.insertOrder(OrderEntity(id, account.id, service.id, weightKg, now, outletId,
-            LaundryStatus.RECEIVED.name, (weightKg * service.pricePerKg).roundToInt(), now + service.turnaroundHours * 3_600_000L))
+            LaundryStatus.RECEIVED.name, total, now + service.turnaroundHours * 3_600_000L))
         dao.saveHistory(listOf(StatusEventEntity(id, LaundryStatus.RECEIVED.name, now)))
         dao.saveNotifications(listOf(NotificationEntity("N-${UUID.randomUUID()}", id, "Pesanan Dicatat",
             "Pesanan $id dengan layanan ${service.name} tersimpan di perangkat Anda.", now, false)))
-        id
+        return id
     }
 
     private suspend fun currentAccount(): CustomerEntity =

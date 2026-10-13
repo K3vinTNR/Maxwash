@@ -206,6 +206,44 @@ class RoomRepositoryTest {
         assertEquals(sari, repository.readData().customer)
     }
 
+    @Test fun checkoutOrdersKeepQuotedTotalAndTrackingAfterDatabaseReopen() = runBlocking {
+        registerBudi()
+        val draft = CheckoutDraft(address = "Jl. Pengujian No. 42", outletId = "OUT-002", serviceId = "SVC-003",
+            weightInput = "4.8", fragrance = "Ocean Breeze", hypoallergenic = true, promoCode = "NEWCLEAN5K")
+        val ids = PaymentMethod.entries.map { repository.createCheckoutOrder(draft.copy(payment = it)) }
+        val saved = repository.readData()
+        assertEquals(3, saved.orders.size)
+        assertEquals(3, saved.notifications.size)
+        saved.orders.forEach { order ->
+            assertTrue(order.id in ids)
+            assertEquals(73800, order.total)
+            assertEquals(4.8, order.weightKg, 0.0)
+            assertEquals("OUT-002", order.outletId)
+            assertEquals(LaundryStatus.RECEIVED, order.status)
+            assertEquals(listOf(LaundryStatus.RECEIVED), order.history.map { it.status })
+        }
+        reopen()
+        assertEquals(saved, repository.readData())
+        repository.logout()
+        assertTrue(repository.login("budi@example.com", "BudiPass123"))
+        assertEquals(saved, repository.readData())
+    }
+
+    @Test fun invalidCheckoutDoesNotSaveOrdersHistoryOrNotifications() = runBlocking {
+        registerBudi()
+        val initial = repository.readData()
+        val draft = CheckoutDraft(address = "Jl. Pengujian", outletId = "OUT-001", serviceId = "SVC-001", weightInput = "2")
+        listOf(draft.copy(address = ""), draft.copy(outletId = "missing"), draft.copy(serviceId = "missing"),
+            draft.copy(weightInput = "invalid"), draft.copy(promoCode = "invalid")).forEach { invalid ->
+            expectInvalid { repository.createCheckoutOrder(invalid) }
+        }
+        assertEquals(initial, repository.readData())
+        listOf("orders", "status_events", "notifications").forEach { assertEquals(0, rowCount(it)) }
+        repository.logout()
+        expectInvalid { repository.createCheckoutOrder(draft) }
+        listOf("orders", "status_events", "notifications").forEach { assertEquals(0, rowCount(it)) }
+    }
+
     @Test fun databaseChangesEmitNewCatalogAndOrderDataToObservers() = runBlocking {
         registerBudi()
         val orderId = repository.createOrder("SVC-001", 2.0, "OUT-001")

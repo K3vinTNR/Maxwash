@@ -19,7 +19,7 @@
 
 ## 👋 Tentang MAXWASH
 
-MAXWASH adalah aplikasi Android untuk pelanggan laundry yang membantu pengguna memilih layanan, membuat pesanan, dan memantau proses pencucian dalam satu aplikasi. Pengguna dapat mengatur penjemputan atau memilih antar mandiri, melihat rincian biaya, serta melacak pesanan dari Beranda.
+MAXWASH adalah aplikasi Android untuk pelanggan laundry yang membantu pengguna memilih layanan, membuat pesanan, dan memantau proses pencucian dalam satu aplikasi. Pengguna dapat mengatur penjemputan ke lokasi, melihat rincian biaya, serta melacak pesanan dari Beranda.
 
 Aplikasi ini dikembangkan sebagai prototipe untuk mata kuliah IF570L. Data akun dan pesanan disimpan secara lokal di perangkat menggunakan Room, sedangkan pembayaran disimulasikan untuk memperlihatkan alur pemesanan.
 
@@ -37,8 +37,9 @@ MAXWASH memudahkan pelanggan mengelola kebutuhan laundry tanpa harus mencatat pe
 | --- | --- |
 | 🔐 **Registrasi & Login** | Membuat akun dan masuk menggunakan email atau nomor handphone. |
 | 🏠 **Beranda** | Melihat pesanan aktif, estimasi selesai, statistik cucian, promo, dan aktivitas terakhir. |
-| 🚚 **Pemesanan Laundry** | Mengatur penjemputan atau antar mandiri, outlet, jadwal, layanan, parfum, tambahan, catatan, dan estimasi berat. |
+| 🚚 **Pemesanan Laundry** | Mengatur penjemputan ke lokasi, outlet, jadwal, layanan, parfum, tambahan, catatan, dan estimasi berat. |
 | 💳 **Konfirmasi Pembayaran** | Memeriksa tagihan, menggunakan kode promo, dan memilih QRIS, virtual account, atau bayar di outlet. |
+| 🧾 **Nota Digital** | Melihat nota transaksi lunas, menggulir nota sebelumnya, dan menyimpan nota sebagai PDF melalui pemilih folder Android. |
 | 📍 **Order Tracking** | Melihat nomor pesanan, layanan, berat, biaya, outlet, estimasi pengambilan, dan tahapan pengerjaan. |
 | 📋 **Pesanan & Riwayat** | Mencari pesanan dan menyaring pesanan aktif atau selesai. |
 | 🔔 **Notifikasi** | Membaca informasi pesanan dan menandainya sebagai sudah dibaca. |
@@ -69,8 +70,16 @@ MAXWASH memudahkan pelanggan mengelola kebutuhan laundry tanpa harus mencatat pe
 4. Tentukan metode penjemputan, alamat atau outlet, dan jadwal yang diinginkan.
 5. Pilih layanan, parfum, tambahan, serta masukkan estimasi berat cucian.
 6. Periksa rincian tagihan, gunakan kode promo jika tersedia, dan pilih metode pembayaran.
-7. Tekan **Bayar Sekarang**. Pembayaran dianggap berhasil untuk prototipe, pesanan disimpan, dan aplikasi kembali ke Beranda dengan pesanan baru.
+7. Tekan **Bayar Sekarang**. Pesanan disimpan dan aplikasi kembali ke Beranda. QRIS serta virtual account dianggap lunas dalam simulasi; Bayar di Outlet menunggu pembayaran di outlet.
 8. Tekan **Lacak Pesanan** untuk membuka Order Tracking dari pesanan tersebut.
+
+### Nota Digital dan PDF
+
+Buka **Beranda → Nota Digital** untuk melihat seluruh nota lunas, dari yang terbaru. Gulir ke bawah untuk nota sebelumnya. Tombol **Nota Digital** di Pesanan, Riwayat, dan rincian pesanan membuka nota pesanan yang dipilih. Tekan **Unduh / Simpan Nota PDF** untuk memilih nama serta lokasi penyimpanan; membatalkan pemilih berkas tidak membuat unduhan.
+
+Nota menyimpan identitas outlet dan pelanggan, nomor nota/pesanan, waktu transaksi WIB, layanan, berat estimasi, tarif, parfum, tambahan deterjen, promo, metode pembayaran, serta total saat checkout. Data transaksi tetap sama setelah profil atau katalog berubah. Status pengambilan mengikuti status dan riwayat pesanan saat nota dilihat atau diunduh. PDF mendukung beberapa halaman untuk rincian yang panjang.
+
+QRIS dan virtual account dianggap lunas dalam simulasi prototipe. **Bayar di Outlet** tetap belum lunas sampai pembayaran tercatat. Pesanan lama atau catatan manual yang tidak memiliki rincian pembayaran tidak diterbitkan nota lunas. Nota dan PDF mencantumkan transaksi simulasi karena belum ada payment gateway. Database versi 2 menambahkan rekaman transaksi melalui migrasi yang mempertahankan data versi 1.
 
 ## 🧺 Layanan laundry
 

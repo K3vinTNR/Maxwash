@@ -32,6 +32,7 @@ class MaxwashViewModel(application: Application) : AndroidViewModel(application)
     val fragrances get() = data.fragrances
     val promotions get() = data.promotions
     val notifications get() = data.notifications
+    val paidReceipts get() = data.receipts.filter { it.isPaid }
     val selectedOutletId get() = data.selectedOutletId
     val visibleOrders get() = orders.filterOrders(filter, search)
     val monthOrders get() = orders.filter { LocalTimeFormat.isThisMonth(it.createdAt) }
@@ -58,6 +59,7 @@ class MaxwashViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun order(id: String?) = orders.find { it.id == id }
+    fun receipt(orderId: String?) = data.receipts.find { it.orderId == orderId }
     fun outlet(id: String) = outlets.find { it.id == id }
     fun distanceKm() = outlet(selectedOutletId)?.distanceKm
     fun clearError() { errorMessage = null }

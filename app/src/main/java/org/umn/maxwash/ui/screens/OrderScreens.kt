@@ -29,7 +29,7 @@ import org.umn.maxwash.ui.components.*
 import org.umn.maxwash.ui.theme.*
 
 @Composable
-fun OrdersScreen(vm: MaxwashViewModel, onOrder: (String) -> Unit, feedback: (String) -> Unit) {
+fun OrdersScreen(vm: MaxwashViewModel, onOrder: (String) -> Unit, onReceipt: (String) -> Unit) {
     val orders = vm.visibleOrders
     var adding by rememberSaveable { mutableStateOf(false) }
     LazyColumn(Modifier.fillMaxSize().testTag("orders_list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -67,7 +67,7 @@ fun OrdersScreen(vm: MaxwashViewModel, onOrder: (String) -> Unit, feedback: (Str
             }
         }
         if (orders.isEmpty()) item { EmptyState("Tidak ada pesanan", "Coba kata kunci lain atau ubah filter.", Modifier.testTag("orders_empty")) }
-        items(orders, key = { it.id }) { order -> OrderCard(order, vm.outlet(order.outletId)?.name.orEmpty(), onOrder, feedback) }
+        items(orders, key = { it.id }) { order -> OrderCard(order, vm.outlet(order.outletId)?.name.orEmpty(), onOrder, onReceipt) }
         item { Text("Menampilkan ${orders.size} pesanan tersimpan", Modifier.padding(vertical = 20.dp), style = MaterialTheme.typography.bodySmall, color = WashMuted) }
     }
     if (adding) NewOrderDialog(vm, { adding = false }) { id ->
@@ -79,7 +79,7 @@ fun OrdersScreen(vm: MaxwashViewModel, onOrder: (String) -> Unit, feedback: (Str
 }
 
 @Composable
-private fun OrderCard(order: LaundryOrder, outletName: String, onOrder: (String) -> Unit, feedback: (String) -> Unit) {
+private fun OrderCard(order: LaundryOrder, outletName: String, onOrder: (String) -> Unit, onReceipt: (String) -> Unit) {
     WashCard(Modifier.testTag("order_${order.id}").clickable { onOrder(order.id) }) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             IconTile(Icons.Outlined.LocalLaundryService, Modifier.size(30.dp))
@@ -97,7 +97,7 @@ private fun OrderCard(order: LaundryOrder, outletName: String, onOrder: (String)
         Text(outletName, style = MaterialTheme.typography.bodySmall, color = WashMuted)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button({ onOrder(order.id) }, Modifier.weight(1f), shape = MaterialTheme.shapes.small) { Text(if (order.isCompleted) "Lihat Rincian" else "Lacak Pesanan", style = MaterialTheme.typography.labelMedium) }
-            FilledTonalButton({ feedback("Nota ${order.id} · ${rupiah(order.total)} · ${order.service}") }, Modifier.weight(1f), shape = MaterialTheme.shapes.small,
+            FilledTonalButton({ onReceipt(order.id) }, Modifier.weight(1f).testTag("order_receipt_${order.id}"), shape = MaterialTheme.shapes.small,
                 colors = ButtonDefaults.filledTonalButtonColors(containerColor = WashSoftBlue, contentColor = WashNavy)) { Text("Nota Digital", style = MaterialTheme.typography.labelMedium) }
         }
     }
@@ -152,7 +152,7 @@ private fun NewOrderDialog(vm: MaxwashViewModel, onDismiss: () -> Unit, onSaved:
 }
 
 @Composable
-fun OrderDetailsScreen(vm: MaxwashViewModel, orderId: String?, onLocation: () -> Unit) {
+fun OrderDetailsScreen(vm: MaxwashViewModel, orderId: String?, onLocation: () -> Unit, onReceipt: (String) -> Unit) {
     val order = vm.order(orderId)
     if (order == null) {
         EmptyState("Pesanan tidak ditemukan", "ID ${orderId ?: "kosong"} tidak tersedia. Silakan kembali ke daftar pesanan.", Modifier.testTag("order_missing")); return
@@ -183,6 +183,11 @@ fun OrderDetailsScreen(vm: MaxwashViewModel, orderId: String?, onLocation: () ->
                 Text("  ${vm.outlet(order.outletId)?.name.orEmpty()}", style = MaterialTheme.typography.bodySmall)
             }
             Text(vm.outlet(order.outletId)?.address.orEmpty(), style = MaterialTheme.typography.bodySmall, color = WashMuted)
+            FilledTonalButton({ onReceipt(order.id) }, Modifier.fillMaxWidth().testTag("detail_receipt")) {
+                Icon(Icons.Outlined.Receipt, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Nota Digital (E-Receipt)")
+            }
         }
         Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(WashBlue, WashTeal)), MaterialTheme.shapes.small).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {

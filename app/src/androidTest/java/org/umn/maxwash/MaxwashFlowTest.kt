@@ -432,7 +432,7 @@ class MaxwashFlowTest {
         compose.onNodeWithTag("home_order_id").assertTextEquals("ORDER #${order.id}")
         compose.onNodeWithTag("home_order_service").assertTextEquals(order.service)
         compose.onNodeWithTag("home_order_weight").assertTextEquals("4.8 kg")
-        awaitFeedbackGone("Pembayaran berhasil. Pesanan Anda sudah dibuat.")
+        awaitFeedbackGone("Pesanan dibuat. Pembayaran dilakukan di outlet.")
         capture("checkout-order-home")
         compose.activityRule.scenario.recreate()
         awaitTag("home_order_id")

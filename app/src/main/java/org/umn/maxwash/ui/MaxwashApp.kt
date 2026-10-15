@@ -41,6 +41,7 @@ fun MaxwashApp(vm: MaxwashViewModel = viewModel(), startDestination: String = "s
         if (vm.logout()) nav.navigate("login") { popUpTo(nav.graph.id) { inclusive = true }; launchSingleTop = true }
     } }
     fun details(id: String) { nav.navigate("orders/$id") }
+    fun receipt(id: String) { nav.navigate("receipts/$id") { launchSingleTop = true } }
     LaunchedEffect(route, vm.signedIn, vm.isLoading) {
         if (!vm.isLoading) {
             if (!auth && !vm.signedIn) nav.navigate("login") { popUpTo(nav.graph.id) { inclusive = true } }
@@ -83,13 +84,15 @@ fun MaxwashApp(vm: MaxwashViewModel = viewModel(), startDestination: String = "s
     }
     LaunchedEffect(vm.completedCheckoutOrderId) {
         if (vm.completedCheckoutOrderId != null) {
+            val paid = vm.receipt(vm.completedCheckoutOrderId)?.isPaid == true
             nav.navigate("home") {
                 popUpTo("home") { inclusive = false }
                 launchSingleTop = true
             }
             checkoutDraft = checkoutDraft.copy(weightInput = "", promoCode = "", clothingNotes = "", hypoallergenic = false)
             vm.consumeCompletedCheckout()
-            feedback("Pembayaran berhasil. Pesanan Anda sudah dibuat.")
+            feedback(if (paid) "Pembayaran berhasil. Pesanan Anda sudah dibuat."
+                else "Pesanan dibuat. Pembayaran dilakukan di outlet.")
         }
     }
     Surface(Modifier.fillMaxSize(), color = WashBackground) {
@@ -104,11 +107,16 @@ fun MaxwashApp(vm: MaxwashViewModel = viewModel(), startDestination: String = "s
                         "home" -> "HOME"; "orders" -> "PESANAN SAYA"; "history" -> "RIWAYAT PESANAN"
                         "profile" -> "PROFIL PELANGGAN"; "location" -> "LOKASI LAUNDRY"
                         "pickup" -> "PENJEMPUTAN"
+                        "receipts", "receipts/{orderId}" -> "NOTA DIGITAL"
                         "notifications" -> "NOTIFIKASI"; else -> "ORDER TRACKING"
                     }, vm.unreadCount, { nav.navigate("notifications") { launchSingleTop = true } }, { topNavigate("profile") },
-                        if (route in listOf("location", "notifications", "orders/{orderId}", "pickup")) ({ nav.popBackStack() }) else null)
+                        if (route in listOf("location", "notifications", "orders/{orderId}", "pickup", "receipts", "receipts/{orderId}")) ({ nav.popBackStack() }) else null)
                 },
-                bottomBar = { if (!auth && !checkout) WashBottomBar(if (route == "orders/{orderId}") "orders" else route, ::topNavigate) },
+                bottomBar = { if (!auth && !checkout) WashBottomBar(when (route) {
+                    "orders/{orderId}", "receipts/{orderId}" -> "orders"
+                    "receipts" -> "home"
+                    else -> route
+                }, ::topNavigate) },
                 snackbarHost = { SnackbarHost(snackbar) }) { padding ->
                 NavHost(nav, startDestination, modifier = Modifier.padding(padding).imePadding()) {
                     composable("splash") {
@@ -134,14 +142,18 @@ fun MaxwashApp(vm: MaxwashViewModel = viewModel(), startDestination: String = "s
                             vm.outlet(checkoutDraft.outletId), { checkoutDraft = it }, vm.isSubmittingCheckout,
                             { vm.submitCheckout(checkoutDraft) })
                     }
-                    composable("orders") { OrdersScreen(vm, ::details, feedback) }
-                    composable("history") { OrdersScreen(vm, ::details, feedback) }
+                    composable("orders") { OrdersScreen(vm, ::details, ::receipt) }
+                    composable("history") { OrdersScreen(vm, ::details, ::receipt) }
                     composable("orders/{orderId}", arguments = listOf(navArgument("orderId") { type = NavType.StringType })) { backStack ->
                         val id = backStack.arguments?.getString("orderId")
                         OrderDetailsScreen(vm, id, {
                             vm.order(id)?.let { vm.selectOutlet(it.outletId) }
                             nav.navigate("location")
-                        })
+                        }, ::receipt)
+                    }
+                    composable("receipts") { DigitalReceiptsScreen(vm, onAllReceipts = { topNavigate("receipts") }, feedback = feedback) }
+                    composable("receipts/{orderId}", arguments = listOf(navArgument("orderId") { type = NavType.StringType })) { backStack ->
+                        DigitalReceiptsScreen(vm, backStack.arguments?.getString("orderId"), { topNavigate("receipts") }, feedback)
                     }
                     composable("location") { LocationScreen(vm, feedback) }
                     composable("profile") { ProfileScreen(vm, ::logout, { nav.navigate("location") }, feedback) }

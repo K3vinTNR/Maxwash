@@ -51,6 +51,7 @@ interface MaxwashDao {
     @Upsert suspend fun savePromotions(promotions: List<PromotionEntity>)
     @Upsert suspend fun saveOrders(orders: List<OrderEntity>)
     @Insert suspend fun insertOrder(order: OrderEntity)
+    @Insert suspend fun insertReceipt(receipt: ReceiptEntity)
     @Upsert suspend fun saveHistory(history: List<StatusEventEntity>)
     @Upsert suspend fun saveNotifications(notifications: List<NotificationEntity>)
 

@@ -42,7 +42,8 @@ data class LocalData(
     val services: List<LaundryService> = emptyList(),
     val fragrances: List<String> = emptyList(),
     val promotions: List<Promotion> = emptyList(),
-    val selectedOutletId: String = ""
+    val selectedOutletId: String = "",
+    val receipts: List<DigitalReceipt> = emptyList()
 )
 
 fun List<LaundryOrder>.filterOrders(filter: OrderFilter, query: String) = filter { order ->

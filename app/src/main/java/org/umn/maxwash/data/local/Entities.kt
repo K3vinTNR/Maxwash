@@ -47,6 +47,20 @@ data class OrderEntity(
 )
 
 @Entity(
+    tableName = "receipts",
+    foreignKeys = [ForeignKey(entity = OrderEntity::class, parentColumns = ["id"], childColumns = ["orderId"], onDelete = ForeignKey.CASCADE)]
+)
+data class ReceiptEntity(
+    @PrimaryKey val orderId: String, val number: String, val orderedAt: Long, val paidAt: Long?,
+    val outletName: String, val outletAddress: String,
+    val customerName: String, val customerPhone: String, val customerEmail: String, val customerAddress: String,
+    val serviceName: String, val weightKg: Double, val pricePerKg: Int,
+    val fragrance: String, val clothingNotes: String,
+    val subtotal: Int, val detergent: Int, val discount: Int, val promoCode: String,
+    val paymentMethod: String, val total: Int
+)
+
+@Entity(
     tableName = "status_events", primaryKeys = ["orderId", "status"],
     foreignKeys = [ForeignKey(entity = OrderEntity::class, parentColumns = ["id"], childColumns = ["orderId"], onDelete = ForeignKey.CASCADE)]
 )
@@ -77,7 +91,8 @@ data class OrderWithDetails(
     @Embedded val order: OrderEntity,
     @Relation(parentColumn = "serviceId", entityColumn = "id") val service: ServiceEntity,
     @Relation(parentColumn = "id", entityColumn = "orderId") val history: List<StatusEventEntity>,
-    @Relation(parentColumn = "id", entityColumn = "orderId") val notifications: List<NotificationEntity>
+    @Relation(parentColumn = "id", entityColumn = "orderId") val notifications: List<NotificationEntity>,
+    @Relation(parentColumn = "id", entityColumn = "orderId") val receipts: List<ReceiptEntity>
 )
 
 data class CustomerWithOrders(

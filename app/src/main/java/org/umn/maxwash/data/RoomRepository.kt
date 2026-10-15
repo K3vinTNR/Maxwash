@@ -35,7 +35,7 @@ class RoomRepository(private val database: MaxwashDatabase, private val catalogD
 
     fun observeData(): Flow<LocalData> = database.invalidationTracker.createFlow(
         "customers", "orders", "status_events", "notifications", "outlets", "services",
-        "app_session", "fragrances", "promotions"
+        "app_session", "fragrances", "promotions", "receipts"
     ).map { readData() }
 
     suspend fun readData(): LocalData = database.withTransaction {
@@ -59,7 +59,9 @@ class RoomRepository(private val database: MaxwashDatabase, private val catalogD
             services = dao.services().map { LaundryService(it.id, it.name, it.pricePerKg, it.turnaroundHours) },
             fragrances = dao.fragrances().map { it.name },
             promotions = dao.promotions().map { Promotion(it.id, it.title, it.message) },
-            selectedOutletId = session?.selectedOutletId.orEmpty()
+            selectedOutletId = session?.selectedOutletId.orEmpty(),
+            receipts = orders.flatMap { it.receipts }.map { it.toModel() }
+                .sortedWith(compareByDescending<DigitalReceipt> { it.paidAt ?: it.orderedAt }.thenBy { it.number })
         )
     }
 
@@ -125,13 +127,24 @@ class RoomRepository(private val database: MaxwashDatabase, private val catalogD
         val account = currentAccount()
         require(weightKg.isFinite() && weightKg > 0 && weightKg <= 100) { "Berat harus lebih dari 0 dan maksimal 100 kg." }
         val service = requireNotNull(dao.services().find { it.id == serviceId }) { "Layanan tidak tersedia." }
-        require(dao.outlets().any { it.id == outletId }) { "Outlet tidak ditemukan." }
-        val total = draft?.quote(LaundryService(service.id, service.name, service.pricePerKg, service.turnaroundHours))?.total
+        val outlet = requireNotNull(dao.outlets().find { it.id == outletId }) { "Outlet tidak ditemukan." }
+        val serviceModel = LaundryService(service.id, service.name, service.pricePerKg, service.turnaroundHours)
+        val quote = draft?.quote(serviceModel)
+        val total = quote?.total
             ?: (weightKg * service.pricePerKg).roundToInt()
         val now = System.currentTimeMillis()
         val id = "MW-${UUID.randomUUID().toString().replace("-", "").take(12).uppercase(Locale.ROOT)}"
         dao.insertOrder(OrderEntity(id, account.id, service.id, weightKg, now, outletId,
             LaundryStatus.RECEIVED.name, total, now + service.turnaroundHours * 3_600_000L))
+        if (draft != null && quote != null) {
+            dao.insertReceipt(ReceiptEntity(id, "NT-${id.removePrefix("MW-")}", now,
+                if (draft.payment == PaymentMethod.AT_OUTLET) null else now,
+                outlet.name, outlet.address, account.name, account.phone, account.email,
+                if (draft.collection == CollectionMethod.PICKUP) draft.address else account.address,
+                serviceModel.checkoutName, weightKg, service.pricePerKg, draft.fragrance, draft.clothingNotes,
+                quote.subtotal, quote.detergent, quote.discount, draft.promoCode.trim().uppercase(Locale.ROOT),
+                draft.payment.name, total))
+        }
         dao.saveHistory(listOf(StatusEventEntity(id, LaundryStatus.RECEIVED.name, now)))
         dao.saveNotifications(listOf(NotificationEntity("N-${UUID.randomUUID()}", id, "Pesanan Dicatat",
             "Pesanan $id dengan layanan ${service.name} tersimpan di perangkat Anda.", now, false)))
@@ -143,3 +156,7 @@ class RoomRepository(private val database: MaxwashDatabase, private val catalogD
 }
 
 private fun CustomerEntity.toModel() = Customer(id, name, phone, email, address, fragrance, notes, notificationEnabled, outletId.orEmpty(), membership, points)
+
+private fun ReceiptEntity.toModel() = DigitalReceipt(orderId, number, orderedAt, paidAt, outletName, outletAddress,
+    customerName, customerPhone, customerEmail, customerAddress, serviceName, weightKg, pricePerKg,
+    fragrance, clothingNotes, subtotal, detergent, discount, promoCode, paymentMethod, total)

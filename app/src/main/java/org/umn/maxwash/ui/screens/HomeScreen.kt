@@ -67,10 +67,7 @@ fun HomeScreen(vm: MaxwashViewModel, onOrder: (String) -> Unit, navigate: (Strin
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             listOf(Triple("Layanan", Icons.Outlined.LocalLaundryService, { navigate("pickup") }),
                 Triple("Cek Tarif", Icons.Outlined.Calculate, { feedback(vm.services.joinToString(" · ") { "${it.name} ${rupiah(it.pricePerKg)}/kg" }.ifBlank { "Tarif belum tersedia." }) }),
-                Triple("Nota Digital", Icons.AutoMirrored.Outlined.ReceiptLong, {
-                    val receipt = vm.orders.firstOrNull { it.isCompleted } ?: vm.orders.firstOrNull()
-                    if (receipt != null) onOrder(receipt.id) else feedback("Belum ada pesanan untuk ditampilkan.")
-                }),
+                Triple("Nota Digital", Icons.AutoMirrored.Outlined.ReceiptLong, { navigate("receipts") }),
                 Triple("Lokasi", Icons.Outlined.LocationOn, onLocation)).forEach { (label, icon, action) ->
                 Column(Modifier.weight(1f).clickable(onClick = action).padding(4.dp).testTag("home_menu_${label.replace(' ', '_')}"), horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {

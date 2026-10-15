@@ -458,12 +458,14 @@ class MaxwashFlowTest {
         compose.onNodeWithTag("service_continue").assertIsNotEnabled()
     }
 
-    @Test fun dropOffCanNavigateWithoutAddingAnAddressAndUnavailableCategoriesCannotContinue() {
+    @Test fun pickupOnlyAndUnavailableCategoriesCannotContinue() {
         login()
         compose.onNodeWithTag("home_menu_Layanan").performScrollTo().performClick()
         awaitTag("pickup_screen")
-        compose.onNodeWithTag("collection_DROP_OFF").performScrollTo().performClick()
-        compose.onNodeWithTag("pickup_address").assertDoesNotExist()
+        compose.onNodeWithTag("collection_PICKUP").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("collection_DROP_OFF").assertDoesNotExist()
+        compose.onNodeWithText("Antar Mandiri").assertDoesNotExist()
+        compose.onNodeWithTag("pickup_address").assertExists()
         compose.onNodeWithTag("pickup_continue").performClick()
         awaitTag("choose_service_screen")
         compose.onNodeWithTag("category_Satuan / Bedding").performClick()
@@ -474,7 +476,7 @@ class MaxwashFlowTest {
         closeSoftKeyboard()
         compose.onNodeWithTag("service_continue").performClick()
         awaitTag("confirm_payment_screen")
-        compose.onNodeWithTag("payment_collection").assertTextContains("Antar Mandiri", substring = true)
+        compose.onNodeWithTag("payment_collection").assertTextContains("Jemput ke Lokasi", substring = true)
         compose.onNodeWithTag("checkout_back").performClick()
         compose.onNodeWithTag("checkout_back").performClick()
         awaitTag("pickup_screen")

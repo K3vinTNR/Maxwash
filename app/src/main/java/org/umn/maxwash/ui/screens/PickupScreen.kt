@@ -35,7 +35,11 @@ fun PickupScreen(draft: CheckoutDraft, outlets: List<Outlet>, onChange: (Checkou
     var editingSchedule by rememberSaveable { mutableStateOf(false) }
     var outletMenu by remember { mutableStateOf(false) }
     val outlet = outlets.find { it.id == draft.outletId }
-    val pickup = draft.collection == CollectionMethod.PICKUP
+    LaunchedEffect(draft.collection) {
+        if (draft.collection != CollectionMethod.PICKUP) {
+            onChange(draft.copy(collection = CollectionMethod.PICKUP))
+        }
+    }
     fun openMap(address: String) {
         if (address.isBlank()) { feedback("Tambahkan alamat terlebih dahulu."); return }
         try { context.startActivity(Intent(Intent.ACTION_VIEW, "https://www.google.com/maps/search/?api=1&query=${Uri.encode(address)}".toUri())) }
@@ -45,28 +49,22 @@ fun PickupScreen(draft: CheckoutDraft, outlets: List<Outlet>, onChange: (Checkou
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Spacer(Modifier.height(12.dp))
-            PickupMap(draft.address, outlet?.address.orEmpty(), outlet?.name ?: "Pilih Outlet", pickup, ::openMap, feedback)
-            Row(Modifier.fillMaxWidth().background(WashLavender, RoundedCornerShape(28.dp)).padding(4.dp)) {
-                CollectionMethod.entries.forEach { method ->
-                    val selected = draft.collection == method
-                    Row(Modifier.weight(1f).clip(RoundedCornerShape(24.dp))
-                        .background(if (selected) Color.White else Color.Transparent)
-                        .clickable { onChange(draft.copy(collection = method)) }.padding(horizontal = 8.dp, vertical = 12.dp)
-                        .testTag("collection_${method.name}"), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                        Icon(if (method == CollectionMethod.PICKUP) Icons.Outlined.DeliveryDining else Icons.Outlined.Storefront,
-                            null, Modifier.size(17.dp), tint = if (selected) WashTeal else WashMuted)
-                        Spacer(Modifier.width(5.dp))
-                        Text(method.label, style = MaterialTheme.typography.labelMedium, color = if (selected) WashTeal else WashMuted)
-                    }
-                }
+            PickupMap(draft.address, outlet?.address.orEmpty(), outlet?.name ?: "Pilih Outlet", true, ::openMap, feedback)
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
+                .background(WashSoftBlue).padding(horizontal = 16.dp, vertical = 14.dp)
+                .testTag("collection_PICKUP"), horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.DeliveryDining, null, Modifier.size(20.dp), tint = WashTeal)
+                Spacer(Modifier.width(8.dp))
+                Text(CollectionMethod.PICKUP.label, style = MaterialTheme.typography.labelLarge, color = WashTeal)
             }
             Row(Modifier.fillMaxWidth().background(Color(0xFFB8F8E0), RoundedCornerShape(22.dp)).padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Outlined.Verified, null, Modifier.size(20.dp), tint = WashGreen)
-                Text(if (pickup) "Pilih alamat dan jadwal penjemputan Anda" else "Antar cucian langsung ke outlet pilihan Anda",
+                Text("Pilih alamat dan jadwal penjemputan Anda",
                     style = MaterialTheme.typography.labelMedium, color = WashGreen)
             }
-            if (pickup) CheckoutCard {
+            CheckoutCard {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Pill("⌂ Rumah (Alamat Penjemputan)")
                     Spacer(Modifier.weight(1f))
@@ -83,7 +81,7 @@ fun PickupScreen(draft: CheckoutDraft, outlets: List<Outlet>, onChange: (Checkou
                     }
                 }
             }
-            if (pickup) CheckoutCard(Modifier.clickable { editingSchedule = true }.testTag("pickup_schedule")) {
+            CheckoutCard(Modifier.clickable { editingSchedule = true }.testTag("pickup_schedule")) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     CheckoutIcon(Icons.Outlined.Schedule, background = Color(0xFFD0E9FF))
                     Column(Modifier.weight(1f)) {
@@ -113,11 +111,11 @@ fun PickupScreen(draft: CheckoutDraft, outlets: List<Outlet>, onChange: (Checkou
         }
         CheckoutFooter {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(if (pickup) "Alamat & jadwal pilihan" else "Outlet pilihan", style = MaterialTheme.typography.labelSmall, color = WashMuted)
-                Text(if (pickup) "Jemput ke Lokasi" else "Antar Mandiri", style = MaterialTheme.typography.labelSmall, color = WashGreen)
+                Text("Alamat & jadwal pilihan", style = MaterialTheme.typography.labelSmall, color = WashMuted)
+                Text("Jemput ke Lokasi", style = MaterialTheme.typography.labelSmall, color = WashGreen)
             }
-            CheckoutAction(if (pickup) "Konfirmasi Lokasi Penjemputan  →" else "Lanjut Pilih Layanan  →",
-                onContinue, "pickup_continue", Modifier.fillMaxWidth(), draft.locationReady && outlet != null)
+            CheckoutAction("Konfirmasi Lokasi Penjemputan  →",
+                onContinue, "pickup_continue", Modifier.fillMaxWidth(), draft.address.isNotBlank() && outlet != null)
         }
     }
     if (editingAddress) PickupAddressDialog(draft, { editingAddress = false }) {
